@@ -1,0 +1,102 @@
+@model MSDentalSys.Models.ServiciosIndexViewModel
+@{
+    ViewData["Title"] = "Servicios";
+}
+
+<div class="service-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Catálogo clínico</p>
+            <h1>Servicios odontológicos</h1>
+            <p>Consulta los servicios disponibles para la agenda de la clínica.</p>
+        </div>
+        @if (User.IsInRole("Administrador"))
+        {
+            <a asp-action="Create" class="btn btn-ms-primary"><span aria-hidden="true">+</span> Nuevo servicio</a>
+        }
+    </div>
+
+    <div class="service-toolbar">
+        <form asp-action="Index" method="get" class="service-search-form" autocomplete="off">
+            <div class="service-search-input">
+                <span aria-hidden="true">&#128269;</span>
+                <input type="search" name="searchTerm" value="@Model.SearchTerm" class="form-control" autocomplete="off" placeholder="Buscar por nombre o descripción..." aria-label="Buscar servicios" />
+            </div>
+            <button type="submit" class="btn btn-ms-primary">Buscar</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+            }
+        </form>
+        <span class="service-count">@Model.Servicios.Count servicio(s)</span>
+    </div>
+
+    <div class="service-table-card">
+        <div class="table-responsive">
+            <table class="table service-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Servicio</th>
+                        <th>Descripción</th>
+                        <th>Duración estimada</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var servicio in Model.Servicios)
+                    {
+                        <tr>
+                            <td>
+                                <div class="service-name-cell">
+                                    <span class="service-icon" aria-hidden="true">&#10022;</span>
+                                    <strong>@servicio.Nombre</strong>
+                                </div>
+                            </td>
+                            <td class="service-description">@(servicio.Descripcion ?? "—")</td>
+                            <td>@(servicio.DuracionEstimadaMinutos.HasValue ? $"{servicio.DuracionEstimadaMinutos} min" : "No especificada")</td>
+                            <td>
+                                <span class="user-status @(servicio.Estado ? "user-status-active" : "user-status-inactive")">
+                                    @(servicio.Estado ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@servicio.ServicioOdontologicoId" class="btn btn-sm btn-user-action">Ver</a>
+                                @if (User.IsInRole("Administrador"))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@servicio.ServicioOdontologicoId" class="btn btn-sm btn-user-action">Editar</a>
+                                    @if (servicio.Estado)
+                                    {
+                                        <form asp-action="Deactivate" asp-route-id="@servicio.ServicioOdontologicoId" method="post" class="d-inline" onsubmit="return confirm('¿Deseas desactivar este servicio?');">
+                                            <button type="submit" class="btn btn-sm btn-user-action btn-user-danger">Desactivar</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Activate" asp-route-id="@servicio.ServicioOdontologicoId" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-user-action btn-user-activate">Activar</button>
+                                        </form>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Servicios.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="empty-table">No se encontraron servicios con esos criterios.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

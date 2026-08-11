@@ -1,0 +1,116 @@
+@model IEnumerable<MSDentalSys.Models.Cita>
+@{
+    ViewData["Title"] = "Citas";
+    var pacientes = ViewData["Pacientes"] as IEnumerable<MSDentalSys.Models.Paciente> ?? [];
+    var selectedDate = ViewData["Fecha"]?.ToString();
+    var selectedStatus = ViewData["Estado"]?.ToString();
+    var selectedPatientId = ViewData["PacienteId"] as int?;
+    var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
+}
+
+<div class="appointment-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Agenda clínica</p>
+            <h1>Citas</h1>
+            <p>Organiza y consulta las citas de la clínica.</p>
+        </div>
+        @if (!User.IsInRole("Odontologo"))
+        {
+            <a asp-action="Create" class="btn btn-ms-primary"><span aria-hidden="true">+</span> Nueva cita</a>
+        }
+    </div>
+
+    <div class="appointment-filters">
+        <form asp-action="Index" method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label for="fecha" class="form-label">Fecha</label>
+                <input type="date" id="fecha" name="fecha" value="@selectedDate" class="form-control" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label for="estado" class="form-label">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    @foreach (var status in statuses)
+                    {
+                        <option value="@status" selected="@(selectedStatus == status ? "selected" : null)">@status</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="pacienteId" class="form-label">Paciente</label>
+                <select id="pacienteId" name="pacienteId" class="form-select">
+                    <option value="">Todos los pacientes</option>
+                    @foreach (var paciente in pacientes)
+                    {
+                        <option value="@paciente.PacienteId" selected="@(selectedPatientId == paciente.PacienteId ? "selected" : null)">@paciente.Nombre @paciente.Apellido</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-ms-primary flex-grow-1">Filtrar</button>
+                <a asp-action="Index" class="btn btn-outline-secondary" title="Limpiar filtros">×</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="appointment-table-card">
+        <div class="table-responsive">
+            <table class="table appointment-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha y hora</th>
+                        <th>Paciente</th>
+                        <th>Odontólogo</th>
+                        <th>Servicio</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cita in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong class="appointment-date">@cita.FechaHoraInicio.ToString("dd/MM/yyyy")</strong>
+                                <span class="appointment-time">@cita.FechaHoraInicio.ToString("hh:mm tt")</span>
+                            </td>
+                            <td>@cita.Paciente.Nombre @cita.Paciente.Apellido</td>
+                            <td>@cita.Odontologo.Nombre @cita.Odontologo.Apellido</td>
+                            <td>@cita.ServicioOdontologico.Nombre</td>
+                            <td><span class="appointment-status status-@cita.EstadoCita.ToLowerInvariant().Replace(" ", "-")">@cita.EstadoCita</span></td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@cita.CitaId" class="btn btn-sm btn-action">Ver</a>
+                                @if ((User.IsInRole("Administrador") || User.IsInRole("Recepcionista")) && cita.EstadoCita != "Cancelada" && cita.EstadoCita != "Atendida")
+                                {
+                                    <a asp-action="Reschedule" asp-route-id="@cita.CitaId" class="btn btn-sm btn-action">Reagendar</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty-table">No se encontraron citas con los filtros seleccionados.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,62 @@
+@model MSDentalSys.Models.CitaFormViewModel
+@{
+    ViewData["Title"] = "Registrar cita";
+}
+
+<div class="appointment-page">
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Agenda clínica</p>
+            <h1>Registrar cita</h1>
+            <p>Programa una nueva cita para un paciente.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-light">Volver a citas</a>
+    </div>
+
+    <div class="appointment-form-card">
+        <form asp-action="Create" method="post" autocomplete="off">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label asp-for="PacienteId" class="form-label"></label>
+                    <select asp-for="PacienteId" asp-items="Model.Pacientes" class="form-select" autocomplete="off">
+                        <option value="">Selecciona un paciente</option>
+                    </select>
+                    <span asp-validation-for="PacienteId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="OdontologoId" class="form-label"></label>
+                    <select asp-for="OdontologoId" asp-items="Model.Odontologos" class="form-select" autocomplete="off">
+                        <option value="">Selecciona un odontólogo</option>
+                    </select>
+                    <span asp-validation-for="OdontologoId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ServicioOdontologicoId" class="form-label"></label>
+                    <select asp-for="ServicioOdontologicoId" asp-items="Model.Servicios" class="form-select" autocomplete="off">
+                        <option value="">Selecciona un servicio</option>
+                    </select>
+                    <span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="FechaHoraInicio" class="form-label"></label>
+                    <input asp-for="FechaHoraInicio" class="form-control" autocomplete="off" type="datetime-local" />
+                    <span asp-validation-for="FechaHoraInicio" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Observaciones" class="form-label"></label>
+                    <textarea asp-for="Observaciones" class="form-control" autocomplete="off" rows="4" placeholder="Notas adicionales para la cita (opcional)"></textarea>
+                    <span asp-validation-for="Observaciones" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-ms-primary">Registrar cita</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

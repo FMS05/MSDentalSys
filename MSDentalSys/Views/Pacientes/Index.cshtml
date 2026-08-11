@@ -1,0 +1,102 @@
+@model IEnumerable<MSDentalSys.Models.Paciente>
+@{
+    ViewData["Title"] = "Pacientes";
+    var searchTerm = ViewData["SearchTerm"]?.ToString();
+}
+
+<div class="patient-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Gestión clínica</p>
+            <h1>Pacientes</h1>
+            <p>Consulta y administra la información de tus pacientes.</p>
+        </div>
+        @if (!User.IsInRole("Odontologo"))
+        {
+            <a asp-action="Create" class="btn btn-ms-primary"><span aria-hidden="true">+</span> Nuevo paciente</a>
+        }
+    </div>
+
+    <div class="patient-toolbar">
+        <form asp-action="Index" method="get" class="patient-search-form">
+            <div class="patient-search-input">
+                <span aria-hidden="true">&#128269;</span>
+                <input type="search" name="searchTerm" value="@searchTerm" class="form-control" placeholder="Buscar por nombre, cédula o teléfono..." aria-label="Buscar pacientes" />
+            </div>
+            <button type="submit" class="btn btn-ms-primary">Buscar</button>
+            @if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+            }
+        </form>
+        <span class="patient-count">@Model.Count() paciente(s)</span>
+    </div>
+
+    <div class="patient-table-card">
+        <div class="table-responsive">
+            <table class="table patient-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Cédula</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var paciente in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="patient-name-cell">
+                                    <span class="patient-avatar">@paciente.Nombre.Substring(0, 1).ToUpper()</span>
+                                    <span>@paciente.Nombre @paciente.Apellido</span>
+                                </div>
+                            </td>
+                            <td>@(paciente.Cedula ?? "—")</td>
+                            <td>@(paciente.Telefono ?? "—")</td>
+                            <td>@(paciente.Correo ?? "—")</td>
+                            <td>
+                                <span class="status-badge @(paciente.Estado ? "status-active" : "status-inactive")">
+                                    @(paciente.Estado ? "Activo" : "Inactivo")
+                                </span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@paciente.PacienteId" class="btn btn-sm btn-action" title="Ver detalles">Ver</a>
+                                <a asp-action="Edit" asp-route-id="@paciente.PacienteId" class="btn btn-sm btn-action" title="Editar paciente">Editar</a>
+                                @if (User.IsInRole("Administrador") && paciente.Estado)
+                                {
+                                    <form asp-action="Deactivate" asp-route-id="@paciente.PacienteId" method="post" class="d-inline" onsubmit="return confirm('¿Deseas desactivar este paciente?');">
+                                        <button type="submit" class="btn btn-sm btn-action btn-action-danger">Desactivar</button>
+                                    </form>
+                                }
+                                else if (User.IsInRole("Administrador"))
+                                {
+                                    <form asp-action="Activate" asp-route-id="@paciente.PacienteId" method="post" class="d-inline" onsubmit="return confirm('¿Deseas activar este paciente?');">
+                                        <button type="submit" class="btn btn-sm btn-action">Activar</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty-table">No se encontraron pacientes con esos criterios.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

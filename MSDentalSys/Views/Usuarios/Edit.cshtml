@@ -1,0 +1,69 @@
+@model MSDentalSys.Models.UsuarioEditViewModel
+@{
+    ViewData["Title"] = "Editar usuario";
+}
+
+<div class="user-admin-page">
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Administración</p>
+            <h1>Editar usuario</h1>
+            <p>Actualiza los datos básicos y el rol operativo.</p>
+        </div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-light">Ver detalles</a>
+    </div>
+
+    <div class="user-form-card user-edit-card">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" autocomplete="off">
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombre" class="form-label"></label>
+                    <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Nombre" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Apellido" class="form-label"></label>
+                    <input asp-for="Apellido" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Apellido" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Correo electrónico</label>
+                    <input value="@Model.Email" class="form-control" autocomplete="off" readonly />
+                    <div class="form-text">El correo no se modifica desde esta pantalla.</div>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Telefono" class="form-label"></label>
+                    <input asp-for="Telefono" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Telefono" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Rol" class="form-label"></label>
+                    @if (Model.EsAdministradorInicial)
+                    {
+                        <input value="Administrador" class="form-control" autocomplete="off" readonly />
+                        <input asp-for="Rol" type="hidden" />
+                        <div class="form-text">El administrador inicial conserva su rol protegido.</div>
+                    }
+                    else
+                    {
+                        <select asp-for="Rol" class="form-select" autocomplete="off">
+                            <option value="Odontologo">Odontologo</option>
+                            <option value="Recepcionista">Recepcionista</option>
+                        </select>
+                    }
+                    <span asp-validation-for="Rol" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-ms-primary">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
