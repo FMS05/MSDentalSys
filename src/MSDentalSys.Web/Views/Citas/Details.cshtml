@@ -1,0 +1,108 @@
+@model MSDentalSys.Data.Models.Cita
+@{
+    ViewData["Title"] = "Detalle de cita";
+    var canManageAppointment = User.IsInRole("Administrador") || User.IsInRole("Recepcionista");
+    var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
+}
+
+<div class="appointment-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Detalle de cita</p>
+            <h1>@Model.FechaHoraInicio.ToString("dd/MM/yyyy · hh:mm tt")</h1>
+            <p>@Model.Paciente.Nombre @Model.Paciente.Apellido · @Model.ServicioOdontologico.Nombre</p>
+        </div>
+        <a asp-action="Index" class="btn btn-light">Volver a citas</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="appointment-detail-card">
+                <div class="appointment-detail-top">
+                    <div class="appointment-detail-icon">&#128197;</div>
+                    <div>
+                        <span class="appointment-label">Estado actual</span>
+                        <span class="appointment-status status-@Model.EstadoCita.ToLowerInvariant().Replace(" ", "-")">@Model.EstadoCita</span>
+                    </div>
+                </div>
+                <dl class="appointment-detail-grid">
+                    <div><dt>Fecha</dt><dd>@Model.FechaHoraInicio.ToString("dd/MM/yyyy")</dd></div>
+                    <div><dt>Hora</dt><dd>@Model.FechaHoraInicio.ToString("hh:mm tt")</dd></div>
+                    <div><dt>Paciente</dt><dd>@Model.Paciente.Nombre @Model.Paciente.Apellido</dd></div>
+                    <div><dt>Odontólogo</dt><dd>@Model.Odontologo.Nombre @Model.Odontologo.Apellido</dd></div>
+                    <div><dt>Servicio</dt><dd>@Model.ServicioOdontologico.Nombre</dd></div>
+                    <div><dt>Creada</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
+                    <div class="detail-full"><dt>Observaciones</dt><dd>@(Model.Observaciones ?? "Sin observaciones")</dd></div>
+                </dl>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="appointment-actions-card">
+                @if (Model.EstadoCita == "Cancelada")
+                {
+                    <h2>Consulta de cita</h2>
+                    <p class="text-muted mb-0">Esta cita está cancelada y su estado es final. Se conserva únicamente para consulta e historial.</p>
+                }
+                else if (Model.EstadoCita == "Atendida")
+                {
+                    <h2>Consulta de cita</h2>
+                    <p class="text-muted mb-0">Esta cita fue atendida y su estado es final. Se conserva Ãºnicamente para consulta e historial.</p>
+                }
+                else if (canManageAppointment)
+                {
+                    <h2>Acciones de la cita</h2>
+                    <a asp-action="Reschedule" asp-route-id="@Model.CitaId" class="btn btn-outline-dark w-100 mb-2">Reagendar cita</a>
+                    @if (Model.EstadoCita != "Confirmada")
+                    {
+                        <form asp-action="Confirm" asp-route-id="@Model.CitaId" method="post" class="mb-2">
+                            <button type="submit" class="btn btn-confirm w-100">Confirmar cita</button>
+                        </form>
+                    }
+                    <form asp-action="Cancel" asp-route-id="@Model.CitaId" method="post" class="mb-4">
+                        <button type="submit" class="btn btn-cancel w-100">Cancelar cita</button>
+                    </form>
+
+                    <hr />
+                    <h3>Actualizar estado</h3>
+                    <form asp-action="UpdateStatus" asp-route-id="@Model.CitaId" method="post">
+                        <input type="hidden" name="CitaId" value="@Model.CitaId" />
+                        <select name="EstadoCita" class="form-select mb-2">
+                            @foreach (var status in statuses)
+                            {
+                                <option value="@status" selected="@(Model.EstadoCita == status ? "selected" : null)">@status</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-ms-primary w-100">Guardar estado</button>
+                    </form>
+                }
+                else if (User.IsInRole("Odontologo"))
+                {
+                    <h2>Actualizar estado</h2>
+                    <form asp-action="UpdateStatus" asp-route-id="@Model.CitaId" method="post">
+                        <input type="hidden" name="CitaId" value="@Model.CitaId" />
+                        <select name="EstadoCita" class="form-select mb-2">
+                            <option value="Atendida">Atendida</option>
+                            <option value="@statuses[4]">@statuses[4]</option>
+                        </select>
+                        <button type="submit" class="btn btn-ms-primary w-100">Guardar estado</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

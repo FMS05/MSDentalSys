@@ -1,0 +1,58 @@
+@model MSDentalSys.Web.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="dashboard-page">
+    <div class="dashboard-heading">
+        <div>
+            <p class="dashboard-eyebrow">Panel principal</p>
+            <h1>Buenos d&iacute;as, @Model.NombreCompleto</h1>
+            <p class="dashboard-welcome">Aqu&iacute; tienes una vista general de la cl&iacute;nica.</p>
+        </div>
+        <div class="user-role-badge"><span class="role-dot"></span>@Model.Rol</div>
+    </div>
+
+    <div class="row g-4 dashboard-cards">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dashboard-card">
+                <div class="card-icon">&#128101;</div>
+                <p>Pacientes registrados</p>
+                <strong>@Model.PacientesRegistrados</strong>
+                <span>Total acumulado</span>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dashboard-card">
+                <div class="card-icon">&#128197;</div>
+                <p>Citas del d&iacute;a</p>
+                <strong>@Model.CitasDelDia</strong>
+                <span>Agenda de hoy</span>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dashboard-card">
+                <div class="card-icon">&#9203;</div>
+                <p>Citas pendientes</p>
+                <strong>@Model.CitasPendientes</strong>
+                <span>Por atender</span>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="dashboard-card">
+                <div class="card-icon">&#10003;</div>
+                <p>Atenciones realizadas</p>
+                <strong>@Model.AtencionesRealizadas</strong>
+                <span>Historial cl&iacute;nico</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-empty-state">
+        <div class="empty-state-icon">MS</div>
+        <div>
+            <h2>Gesti&oacute;n cl&iacute;nica en funcionamiento</h2>
+            <p>Consulta pacientes, agenda citas y administra las operaciones principales de la cl&iacute;nica.</p>
+        </div>
+    </div>
+</div>

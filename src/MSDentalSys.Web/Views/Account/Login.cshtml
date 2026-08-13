@@ -1,0 +1,79 @@
+@model MSDentalSys.Web.Models.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<div class="login-page">
+    <div class="login-shell">
+        <div class="login-brand-panel">
+            <div class="brand-mark" aria-hidden="true">MS</div>
+            <p class="brand-kicker">MS DentalSys</p>
+            <h1>Tu salud oral,<br />en buenas manos.</h1>
+            <p class="brand-subtitle">Clínica Dental Dra. Michelle Santana</p>
+            <div class="brand-line"></div>
+            <p class="brand-note">Gestión clínica simple, segura y humana.</p>
+        </div>
+
+        <div class="login-form-panel">
+            <div class="login-form-content">
+                <div class="mobile-brand">MS DentalSys</div>
+                <h2>Bienvenido</h2>
+                <p class="login-intro">Ingresa a tu espacio de trabajo.</p>
+
+                <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="login-form">
+                    <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+
+                    <div class="form-field">
+                        <label asp-for="Email" class="form-label"></label>
+                        <div class="input-with-icon">
+                            <span class="input-icon" aria-hidden="true">&#9993;</span>
+                            <input asp-for="Email" class="form-control" autocomplete="username" placeholder="tu@correo.com" />
+                        </div>
+                        <span asp-validation-for="Email" class="field-validation"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label asp-for="Password" class="form-label"></label>
+                        <div class="input-with-icon password-wrapper">
+                            <span class="input-icon" aria-hidden="true">&#128274;</span>
+                            <input asp-for="Password" class="form-control" id="loginPassword" autocomplete="current-password" placeholder="Ingresa tu contraseña" />
+                            <button type="button" class="password-toggle" id="togglePassword" aria-label="Mostrar contraseña" aria-pressed="false">
+                                <span id="passwordToggleIcon" aria-hidden="true">&#128065;</span>
+                            </button>
+                        </div>
+                        <span asp-validation-for="Password" class="field-validation"></span>
+                    </div>
+
+                    <div class="login-options">
+                        <div class="form-check">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label"></label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-login w-100">
+                        Iniciar sesión <span aria-hidden="true">&#8594;</span>
+                    </button>
+                </form>
+
+                <p class="login-footer">Acceso exclusivo para el equipo de la clínica.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('togglePassword')?.addEventListener('click', function () {
+            const password = document.getElementById('loginPassword');
+            const icon = document.getElementById('passwordToggleIcon');
+            const isPassword = password.type === 'password';
+
+            password.type = isPassword ? 'text' : 'password';
+            this.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            this.setAttribute('aria-pressed', isPassword.toString());
+            icon.innerHTML = isPassword ? '&#128584;' : '&#128065;';
+        });
+    </script>
+}

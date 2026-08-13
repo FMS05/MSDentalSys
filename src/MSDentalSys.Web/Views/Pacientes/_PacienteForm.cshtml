@@ -1,0 +1,149 @@
+@model MSDentalSys.Web.Models.ViewModels.PacienteFormViewModel
+@{
+    var formAction = ViewData["FormAction"]?.ToString() ?? "Create";
+}
+
+<form asp-action="@formAction" method="post" autocomplete="off">
+    @if (Model.PacienteId > 0)
+    {
+        <input asp-for="PacienteId" type="hidden" />
+    }
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="form-section">
+        <div class="form-section-heading">
+            <span class="section-number">01</span>
+            <div>
+                <h2>Datos personales</h2>
+                <p>Información básica del paciente.</p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Nombre" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Apellido" class="form-label"></label>
+                <input asp-for="Apellido" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Apellido" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Cedula" class="form-label"></label>
+                <input asp-for="Cedula" class="form-control" autocomplete="off" placeholder="Opcional" />
+                <span asp-validation-for="Cedula" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="FechaNacimiento" class="form-label"></label>
+                <input asp-for="FechaNacimiento" class="form-control" autocomplete="off" />
+                <span asp-validation-for="FechaNacimiento" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Sexo" class="form-label"></label>
+                <select asp-for="Sexo" class="form-select" autocomplete="off">
+                    <option value="">No especificado</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Otro">Otro</option>
+                </select>
+                <span asp-validation-for="Sexo" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Telefono" class="form-label"></label>
+                <input asp-for="Telefono" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Telefono" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Correo" class="form-label"></label>
+                <input asp-for="Correo" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Correo" class="text-danger"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Direccion" class="form-label"></label>
+                <textarea asp-for="Direccion" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="Direccion" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-section-heading">
+            <span class="section-number">02</span>
+            <div>
+                <h2>Contacto de emergencia</h2>
+                <p>Una persona a contactar en caso de ser necesario.</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ContactoEmergencia" class="form-label"></label>
+                <input asp-for="ContactoEmergencia" class="form-control" autocomplete="off" />
+                <span asp-validation-for="ContactoEmergencia" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="TelefonoEmergencia" class="form-label"></label>
+                <input asp-for="TelefonoEmergencia" class="form-control" autocomplete="off" />
+                <span asp-validation-for="TelefonoEmergencia" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-section-heading">
+            <span class="section-number">03</span>
+            <div>
+                <h2>Antecedentes clínicos</h2>
+                <p>Información relevante para la atención odontológica.</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Alergias" class="form-label"></label>
+                <textarea asp-for="Alergias" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="Alergias" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EnfermedadesSistemicas" class="form-label"></label>
+                <textarea asp-for="EnfermedadesSistemicas" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="EnfermedadesSistemicas" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="MedicamentosActuales" class="form-label"></label>
+                <textarea asp-for="MedicamentosActuales" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="MedicamentosActuales" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="CirugiasPrevias" class="form-label"></label>
+                <textarea asp-for="CirugiasPrevias" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="CirugiasPrevias" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="HabitosRelevantes" class="form-label"></label>
+                <textarea asp-for="HabitosRelevantes" class="form-control" autocomplete="off" rows="2"></textarea>
+                <span asp-validation-for="HabitosRelevantes" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Embarazo" class="form-label"></label>
+                <select asp-for="Embarazo" class="form-select" autocomplete="off">
+                    <option value="">No especificado</option>
+                    <option value="true">Sí</option>
+                    <option value="false">No</option>
+                </select>
+                <span asp-validation-for="Embarazo" class="text-danger"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Observaciones" class="form-label"></label>
+                <textarea asp-for="Observaciones" class="form-control" autocomplete="off" rows="3"></textarea>
+                <span asp-validation-for="Observaciones" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-ms-primary">@(formAction == "Create" ? "Registrar paciente" : "Guardar cambios")</button>
+    </div>
+</form>

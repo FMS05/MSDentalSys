@@ -1,0 +1,24 @@
+@model MSDentalSys.Web.Models.ViewModels.PacienteFormViewModel
+@{
+    ViewData["Title"] = "Registrar paciente";
+    ViewData["FormAction"] = "Create";
+}
+
+<div class="patient-page">
+    <div class="page-heading patient-form-heading">
+        <div>
+            <p class="dashboard-eyebrow">Pacientes</p>
+            <h1>Registrar paciente</h1>
+            <p>Completa la información personal y clínica básica.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-light">Volver al listado</a>
+    </div>
+
+    <div class="patient-form-card">
+        <partial name="_PacienteForm" model="Model" view-data="ViewData" />
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
