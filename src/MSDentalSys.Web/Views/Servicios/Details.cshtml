@@ -1,0 +1,46 @@
+@model MSDentalSys.Data.Models.ServicioOdontologico
+@{
+    ViewData["Title"] = "Detalle de servicio";
+}
+
+<div class="service-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Catálogo clínico</p>
+            <h1>@Model.Nombre</h1>
+            <p>Detalle del servicio odontológico.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-action="Index" class="btn btn-light">Volver</a>
+            @if (User.IsInRole("Administrador"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.ServicioOdontologicoId" class="btn btn-ms-primary">Editar servicio</a>
+            }
+        </div>
+    </div>
+
+    <div class="service-detail-card">
+        <div class="service-detail-header">
+            <div class="service-detail-icon" aria-hidden="true">&#10022;</div>
+            <div>
+                <h2>@Model.Nombre</h2>
+                <p>Servicio odontológico</p>
+            </div>
+            <span class="user-status @(Model.Estado ? "user-status-active" : "user-status-inactive")">@(Model.Estado ? "Activo" : "Inactivo")</span>
+        </div>
+        <dl class="service-detail-grid">
+            <div><dt>Descripción</dt><dd>@(Model.Descripcion ?? "Sin descripción")</dd></div>
+            <div><dt>Duración estimada</dt><dd>@(Model.DuracionEstimadaMinutos.HasValue ? $"{Model.DuracionEstimadaMinutos} minutos" : "No especificada")</dd></div>
+            <div><dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
+            <div><dt>Estado</dt><dd>@(Model.Estado ? "Activo" : "Inactivo")</dd></div>
+        </dl>
+    </div>
+</div>
