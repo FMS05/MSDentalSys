@@ -41,3 +41,4 @@ C:\Proyectos\MSDentalSys\src\MSDentalSys.Data\obj\Debug\net9.0\refint\MSDentalSy
 C:\Proyectos\MSDentalSys\src\MSDentalSys.Data\obj\Debug\net9.0\MSDentalSys.Data.pdb
 C:\Proyectos\MSDentalSys\src\MSDentalSys.Data\obj\Debug\net9.0\MSDentalSys.Data.genruntimeconfig.cache
 C:\Proyectos\MSDentalSys\src\MSDentalSys.Data\obj\Debug\net9.0\ref\MSDentalSys.Data.dll
+C:\Proyectos\MSDentalSys\src\MSDentalSys.Data\obj\Debug\net9.0\MSDentalSys.Data.sourcelink.json
