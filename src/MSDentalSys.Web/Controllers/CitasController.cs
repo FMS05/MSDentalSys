@@ -88,6 +88,13 @@ namespace MSDentalSys.Web.Controllers
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CitaId == id);
 
+            if (cita is not null)
+            {
+                ViewData["Atencion"] = await _context.AtencionesOdontologicas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.CitaId == cita.CitaId);
+            }
+
             return cita is null ? NotFound() : View(cita);
         }
 
