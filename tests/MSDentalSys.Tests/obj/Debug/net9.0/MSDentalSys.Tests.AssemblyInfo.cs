@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MSDentalSys.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+47bcc6d3d9da1c7bdb6d44305fa4e78959df0945")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ebe7db8a36bf1655d9f11abab3bb89b00d63073b")]
 [assembly: System.Reflection.AssemblyProductAttribute("MSDentalSys.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MSDentalSys.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,0 +1,64 @@
+@model MSDentalSys.Web.Models.ViewModels.TratamientoCreateViewModel
+@using MSDentalSys.Data.Models
+@{
+    ViewData["Title"] = "Agregar tratamiento";
+    var atencion = (AtencionOdontologica)ViewData["Atencion"]!;
+}
+
+<div class="appointment-page">
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Atención clínica</p>
+            <h1>Agregar tratamiento</h1>
+            <p>Registra un tratamiento asociado a la atención.</p>
+        </div>
+        <a asp-controller="Atenciones" asp-action="Details" asp-route-id="@atencion.AtencionOdontologicaId" class="btn btn-light">Volver a la atención</a>
+    </div>
+
+    <div class="appointment-form-card">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4"><strong>Paciente</strong><br />@atencion.Paciente.Nombre @atencion.Paciente.Apellido</div>
+            <div class="col-md-4"><strong>Odontólogo</strong><br />@atencion.Odontologo.Nombre @atencion.Odontologo.Apellido</div>
+            <div class="col-md-4"><strong>Fecha de atención</strong><br />@atencion.FechaAtencion.ToString("dd/MM/yyyy hh:mm tt")</div>
+        </div>
+
+        <form asp-action="Create" method="post" autocomplete="off">
+            <input asp-for="AtencionOdontologicaId" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="ServicioOdontologicoId" class="form-label"></label>
+                <select asp-for="ServicioOdontologicoId" asp-items="Model.Servicios" class="form-select" autocomplete="off">
+                    <option value="0">Selecciona un servicio</option>
+                </select>
+                <span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="FechaInicio" class="form-label"></label>
+                <input asp-for="FechaInicio" class="form-control" type="date" autocomplete="off" />
+                <span asp-validation-for="FechaInicio" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="EstadoTratamiento" class="form-label"></label>
+                <select asp-for="EstadoTratamiento" class="form-select" autocomplete="off">
+                    <option value="Planificado">Planificado</option>
+                    <option value="En progreso">En progreso</option>
+                    <option value="Completado">Completado</option>
+                </select>
+                <span asp-validation-for="EstadoTratamiento" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Observaciones" class="form-label"></label>
+                <textarea asp-for="Observaciones" class="form-control" rows="4" autocomplete="off"></textarea>
+                <span asp-validation-for="Observaciones" class="text-danger"></span>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-controller="Atenciones" asp-action="Details" asp-route-id="@atencion.AtencionOdontologicaId" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-ms-primary">Guardar tratamiento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

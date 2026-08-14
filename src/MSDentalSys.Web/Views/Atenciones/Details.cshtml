@@ -3,6 +3,7 @@
     ViewData["Title"] = "Detalle de atención odontológica";
     var canAddDiagnosis = User.IsInRole("Administrador") ||
         (User.IsInRole("Odontologo") && Model.OdontologoId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+    var canManageTreatment = canAddDiagnosis;
 }
 
 <div class="appointment-page">
@@ -10,6 +11,13 @@
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
         </div>
     }
@@ -61,7 +69,41 @@
                 }
                 <hr />
                 <h2>Tratamientos</h2>
-                <p class="text-muted">No hay registros todavía.</p>
+                @if (Model.Tratamientos.Count == 0)
+                {
+                    <p class="text-muted">No hay registros todavía.</p>
+                }
+                else
+                {
+                    foreach (var tratamiento in Model.Tratamientos.OrderBy(t => t.TratamientoId))
+                    {
+                        <div class="border rounded p-3 mb-3">
+                            <h3 class="h6 mb-2">@(tratamiento.ServicioOdontologico?.Nombre ?? "Servicio no disponible")</h3>
+                            <p class="mb-1"><strong>Inicio:</strong> @tratamiento.FechaInicio.ToString("dd/MM/yyyy")</p>
+                            <p class="mb-2"><strong>Estado:</strong> @tratamiento.EstadoTratamiento</p>
+                            @if (!string.IsNullOrWhiteSpace(tratamiento.Observaciones))
+                            {
+                                <p class="text-muted mb-2">@tratamiento.Observaciones</p>
+                            }
+                            @if (canManageTreatment && tratamiento.EstadoTratamiento != "Completado")
+                            {
+                                <form asp-controller="Tratamientos" asp-action="UpdateStatus" method="post" class="d-flex gap-2">
+                                    <input type="hidden" name="id" value="@tratamiento.TratamientoId" />
+                                    <select name="estado" class="form-select form-select-sm" autocomplete="off">
+                                        <option value="Planificado" selected="@(tratamiento.EstadoTratamiento == "Planificado" ? "selected" : null)">Planificado</option>
+                                        <option value="En progreso" selected="@(tratamiento.EstadoTratamiento == "En progreso" ? "selected" : null)">En progreso</option>
+                                        <option value="Completado">Completado</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-dark">Actualizar</button>
+                                </form>
+                            }
+                        </div>
+                    }
+                }
+                @if (canManageTreatment)
+                {
+                    <a asp-controller="Tratamientos" asp-action="Create" asp-route-atencionId="@Model.AtencionOdontologicaId" class="btn btn-ms-primary w-100">Agregar tratamiento</a>
+                }
                 <hr />
                 <h2>Evoluciones clínicas</h2>
                 <p class="text-muted">No hay registros todavía.</p>

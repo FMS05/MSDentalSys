@@ -118,6 +118,7 @@ public class AtencionesController : Controller
             .Include(a => a.Odontologo)
             .Include(a => a.Diagnosticos)
             .Include(a => a.Tratamientos)
+                .ThenInclude(t => t.ServicioOdontologico)
             .Include(a => a.EvolucionesClinicas)
             .AsNoTracking()
             .SingleOrDefaultAsync(a => a.AtencionOdontologicaId == id);
