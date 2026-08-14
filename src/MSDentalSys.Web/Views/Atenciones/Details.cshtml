@@ -4,6 +4,7 @@
     var canAddDiagnosis = User.IsInRole("Administrador") ||
         (User.IsInRole("Odontologo") && Model.OdontologoId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
     var canManageTreatment = canAddDiagnosis;
+    var canAddEvolution = canAddDiagnosis;
 }
 
 <div class="appointment-page">
@@ -106,7 +107,24 @@
                 }
                 <hr />
                 <h2>Evoluciones clínicas</h2>
-                <p class="text-muted">No hay registros todavía.</p>
+                @if (Model.EvolucionesClinicas.Count == 0)
+                {
+                    <p class="text-muted">No hay registros todavía.</p>
+                }
+                else
+                {
+                    foreach (var evolucion in Model.EvolucionesClinicas.OrderByDescending(e => e.FechaEvolucion))
+                    {
+                        <div class="border rounded p-3 mb-3">
+                            <p class="mb-2"><strong>Fecha:</strong> @evolucion.FechaEvolucion.ToString("dd/MM/yyyy hh:mm tt")</p>
+                            <p class="mb-0">@evolucion.Descripcion</p>
+                        </div>
+                    }
+                }
+                @if (canAddEvolution)
+                {
+                    <a asp-controller="EvolucionesClinicas" asp-action="Create" asp-route-atencionId="@Model.AtencionOdontologicaId" class="btn btn-ms-primary w-100">Agregar evolución</a>
+                }
             </div>
         </div>
     </div>
