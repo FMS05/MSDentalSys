@@ -1,0 +1,49 @@
+@model MSDentalSys.Web.Models.ViewModels.AtencionOdontologicaCreateViewModel
+@using MSDentalSys.Data.Models
+@{
+    ViewData["Title"] = "Iniciar atención odontológica";
+    var cita = (Cita)ViewData["Cita"]!;
+}
+
+<div class="appointment-page">
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Atención clínica</p>
+            <h1>Iniciar atención odontológica</h1>
+            <p>Registra la información inicial de la consulta.</p>
+        </div>
+        <a asp-controller="Citas" asp-action="Details" asp-route-id="@cita.CitaId" class="btn btn-light">Volver a la cita</a>
+    </div>
+
+    <div class="appointment-form-card">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6"><strong>Paciente</strong><br />@cita.Paciente.Nombre @cita.Paciente.Apellido</div>
+            <div class="col-md-6"><strong>Odontólogo</strong><br />@cita.Odontologo.Nombre @cita.Odontologo.Apellido</div>
+            <div class="col-md-6"><strong>Fecha y hora</strong><br />@cita.FechaHoraInicio.ToString("dd/MM/yyyy hh:mm tt")</div>
+            <div class="col-md-6"><strong>Servicio</strong><br />@cita.ServicioOdontologico.Nombre</div>
+        </div>
+
+        <form asp-action="Create" method="post" autocomplete="off">
+            <input asp-for="CitaId" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="MotivoConsulta" class="form-label"></label>
+                <textarea asp-for="MotivoConsulta" class="form-control" rows="4" autocomplete="off"></textarea>
+                <span asp-validation-for="MotivoConsulta" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Observaciones" class="form-label"></label>
+                <textarea asp-for="Observaciones" class="form-control" rows="5" autocomplete="off"></textarea>
+                <span asp-validation-for="Observaciones" class="text-danger"></span>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-controller="Citas" asp-action="Details" asp-route-id="@cita.CitaId" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-ms-primary">Guardar atención</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

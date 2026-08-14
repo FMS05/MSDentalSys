@@ -32,6 +32,14 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Atenciones/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXRlbmNpb25lc1xDcmVhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Atenciones/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXRlbmNpb25lc1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Citas/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2l0YXNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -50,6 +58,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Dashboard/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Diagnosticos/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGlhZ25vc3RpY29zXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Proyectos/MSDentalSys/src/MSDentalSys.Web/Views/Home/Index.cshtml]

@@ -3,6 +3,10 @@
     ViewData["Title"] = "Detalle de cita";
     var canManageAppointment = User.IsInRole("Administrador") || User.IsInRole("Recepcionista");
     var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
+    var atencion = ViewData["Atencion"] as MSDentalSys.Data.Models.AtencionOdontologica;
+    var canStartAttention = (User.IsInRole("Administrador") ||
+        (User.IsInRole("Odontologo") && Model.OdontologoId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)) &&
+        (Model.EstadoCita == "Pendiente" || Model.EstadoCita == "Confirmada") && atencion is null;
 }
 
 <div class="appointment-page">
@@ -61,10 +65,20 @@
                 else if (Model.EstadoCita == "Atendida")
                 {
                     <h2>Consulta de cita</h2>
-                    <p class="text-muted mb-0">Esta cita fue atendida y su estado es final. Se conserva Ãºnicamente para consulta e historial.</p>
+                    <p class="text-muted mb-0">Esta cita fue atendida y su estado es final. Se conserva únicamente para consulta e historial.</p>
+                    @if (atencion is not null)
+                    {
+                        <a asp-controller="Atenciones" asp-action="Details" asp-route-id="@atencion.AtencionOdontologicaId" class="btn btn-outline-dark w-100 mt-3">Ver atención</a>
+                    }
                 }
                 else if (canManageAppointment)
                 {
+                    @if (canStartAttention)
+                    {
+                        <h2>Atención clínica</h2>
+                        <a asp-controller="Atenciones" asp-action="Create" asp-route-citaId="@Model.CitaId" class="btn btn-ms-primary w-100 mb-3">Iniciar atención</a>
+                        <hr />
+                    }
                     <h2>Acciones de la cita</h2>
                     <a asp-action="Reschedule" asp-route-id="@Model.CitaId" class="btn btn-outline-dark w-100 mb-2">Reagendar cita</a>
                     @if (Model.EstadoCita != "Confirmada")
@@ -92,6 +106,11 @@
                 }
                 else if (User.IsInRole("Odontologo"))
                 {
+                    @if (canStartAttention)
+                    {
+                        <h2>Atención clínica</h2>
+                        <a asp-controller="Atenciones" asp-action="Create" asp-route-citaId="@Model.CitaId" class="btn btn-ms-primary w-100 mb-3">Iniciar atención</a>
+                    }
                     <h2>Actualizar estado</h2>
                     <form asp-action="UpdateStatus" asp-route-id="@Model.CitaId" method="post">
                         <input type="hidden" name="CitaId" value="@Model.CitaId" />

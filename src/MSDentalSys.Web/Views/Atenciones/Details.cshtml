@@ -1,0 +1,71 @@
+@model MSDentalSys.Data.Models.AtencionOdontologica
+@{
+    ViewData["Title"] = "Detalle de atención odontológica";
+    var canAddDiagnosis = User.IsInRole("Administrador") ||
+        (User.IsInRole("Odontologo") && Model.OdontologoId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+}
+
+<div class="appointment-page">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Atención clínica</p>
+            <h1>Detalle de atención odontológica</h1>
+            <p>Registro clínico conservado para consulta.</p>
+        </div>
+        <a asp-controller="Citas" asp-action="Details" asp-route-id="@Model.CitaId" class="btn btn-light">Volver a la cita</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="appointment-detail-card">
+                <dl class="appointment-detail-grid">
+                    <div><dt>Paciente</dt><dd>@Model.Paciente.Nombre @Model.Paciente.Apellido</dd></div>
+                    <div><dt>Odontólogo</dt><dd>@Model.Odontologo.Nombre @Model.Odontologo.Apellido</dd></div>
+                    <div><dt>Cita</dt><dd>@(Model.Cita is null ? "Sin cita asociada" : Model.Cita.FechaHoraInicio.ToString("dd/MM/yyyy hh:mm tt"))</dd></div>
+                    <div><dt>Fecha de atención</dt><dd>@Model.FechaAtencion.ToString("dd/MM/yyyy hh:mm tt")</dd></div>
+                    <div class="detail-full"><dt>Motivo de consulta</dt><dd>@Model.MotivoConsulta</dd></div>
+                    <div class="detail-full"><dt>Observaciones</dt><dd>@(Model.Observaciones ?? "Sin observaciones")</dd></div>
+                </dl>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="appointment-actions-card">
+                <h2>Diagnósticos</h2>
+                @if (Model.Diagnosticos.Count == 0)
+                {
+                    <p class="text-muted">No hay registros todavía.</p>
+                }
+                else
+                {
+                    foreach (var diagnostico in Model.Diagnosticos.OrderBy(d => d.DiagnosticoId))
+                    {
+                        <div class="border rounded p-3 mb-3">
+                            <h3 class="h6 mb-2">@diagnostico.Descripcion</h3>
+                            @if (!string.IsNullOrWhiteSpace(diagnostico.Observaciones))
+                            {
+                                <p class="text-muted mb-0">@diagnostico.Observaciones</p>
+                            }
+                        </div>
+                    }
+                }
+                @if (canAddDiagnosis)
+                {
+                    <a asp-controller="Diagnosticos" asp-action="Create" asp-route-atencionId="@Model.AtencionOdontologicaId" class="btn btn-ms-primary w-100">Agregar diagnóstico</a>
+                }
+                <hr />
+                <h2>Tratamientos</h2>
+                <p class="text-muted">No hay registros todavía.</p>
+                <hr />
+                <h2>Evoluciones clínicas</h2>
+                <p class="text-muted">No hay registros todavía.</p>
+            </div>
+        </div>
+    </div>
+</div>
