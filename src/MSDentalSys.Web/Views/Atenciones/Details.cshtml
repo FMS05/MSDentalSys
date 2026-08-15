@@ -86,14 +86,23 @@
                             {
                                 <p class="text-muted mb-2">@tratamiento.Observaciones</p>
                             }
-                            @if (canManageTreatment && tratamiento.EstadoTratamiento != "Completado")
+                            @{
+                                var allowedTreatmentStatuses = tratamiento.EstadoTratamiento switch
+                                {
+                                    "Planificado" => new[] { "En progreso", "Completado" },
+                                    "En progreso" => new[] { "Completado" },
+                                    _ => Array.Empty<string>()
+                                };
+                            }
+                            @if (canManageTreatment && allowedTreatmentStatuses.Length > 0)
                             {
                                 <form asp-controller="Tratamientos" asp-action="UpdateStatus" method="post" class="d-flex gap-2">
                                     <input type="hidden" name="id" value="@tratamiento.TratamientoId" />
                                     <select name="estado" class="form-select form-select-sm" autocomplete="off">
-                                        <option value="Planificado" selected="@(tratamiento.EstadoTratamiento == "Planificado" ? "selected" : null)">Planificado</option>
-                                        <option value="En progreso" selected="@(tratamiento.EstadoTratamiento == "En progreso" ? "selected" : null)">En progreso</option>
-                                        <option value="Completado">Completado</option>
+                                        @foreach (var allowedStatus in allowedTreatmentStatuses)
+                                        {
+                                            <option value="@allowedStatus">@allowedStatus</option>
+                                        }
                                     </select>
                                     <button type="submit" class="btn btn-sm btn-outline-dark">Actualizar</button>
                                 </form>

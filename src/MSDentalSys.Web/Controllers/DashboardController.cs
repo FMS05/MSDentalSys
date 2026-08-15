@@ -50,8 +50,16 @@ namespace MSDentalSys.Web.Controllers
                 .CountAsync(c => c.FechaHoraInicio >= hoy && c.FechaHoraInicio < manana);
             var citasPendientes = await citasQuery
                 .CountAsync(c => c.EstadoCita == "Pendiente" || c.EstadoCita == "Confirmada");
-            var atencionesRealizadas = await citasQuery
-                .CountAsync(c => c.EstadoCita == "Atendida");
+            var atencionesQuery = _context.AtencionesOdontologicas
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (esOdontologo)
+            {
+                atencionesQuery = atencionesQuery.Where(a => a.OdontologoId == user.Id);
+            }
+
+            var atencionesRealizadas = await atencionesQuery.CountAsync();
 
             return View(new DashboardViewModel
             {

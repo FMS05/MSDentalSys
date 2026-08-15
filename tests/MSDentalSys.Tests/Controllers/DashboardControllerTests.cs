@@ -60,8 +60,9 @@ public class DashboardControllerTests
         var serviceId = await database.AddServiceAsync();
         var baseDate = DateTime.Today.AddDays(3);
         await database.AddAppointmentAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(8), "Atendida");
-        await database.AddAppointmentAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(9), "Atendida");
-        await database.AddAppointmentAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(10), "Pendiente");
+        await database.AddAttentionAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(9));
+        await database.AddAttentionAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(10));
+        await database.AddAppointmentAsync(patientId, odontologist.Id, serviceId, baseDate.AddHours(11), "Pendiente");
 
         var model = await database.ExecuteDashboardAsync(administrator);
 
@@ -99,8 +100,8 @@ public class DashboardControllerTests
         var today = DateTime.Today;
         await database.AddAppointmentAsync(patientId, odontologistA.Id, serviceId, today.AddHours(8), "Pendiente");
         await database.AddAppointmentAsync(patientId, odontologistB.Id, serviceId, today.AddHours(9), "Confirmada");
-        await database.AddAppointmentAsync(patientId, odontologistA.Id, serviceId, today.AddDays(-1).AddHours(10), "Atendida");
-        await database.AddAppointmentAsync(patientId, odontologistB.Id, serviceId, today.AddDays(-1).AddHours(11), "Atendida");
+        await database.AddAttentionAsync(patientId, odontologistA.Id, serviceId, today.AddDays(-1).AddHours(10));
+        await database.AddAttentionAsync(patientId, odontologistB.Id, serviceId, today.AddDays(-1).AddHours(11));
 
         var model = await database.ExecuteDashboardAsync(receptionist);
 
@@ -120,8 +121,8 @@ public class DashboardControllerTests
         var today = DateTime.Today;
         await database.AddAppointmentAsync(patientId, odontologistA.Id, serviceId, today.AddHours(8), "Pendiente");
         await database.AddAppointmentAsync(patientId, odontologistB.Id, serviceId, today.AddHours(9), "Pendiente");
-        await database.AddAppointmentAsync(patientId, odontologistA.Id, serviceId, today.AddDays(-1).AddHours(10), "Atendida");
-        await database.AddAppointmentAsync(patientId, odontologistB.Id, serviceId, today.AddDays(-1).AddHours(11), "Atendida");
+        await database.AddAttentionAsync(patientId, odontologistA.Id, serviceId, today.AddDays(-1).AddHours(10));
+        await database.AddAttentionAsync(patientId, odontologistB.Id, serviceId, today.AddDays(-1).AddHours(11));
 
         var model = await database.ExecuteDashboardAsync(odontologistA);
 
@@ -274,6 +275,35 @@ public class DashboardControllerTests
                 FechaHoraInicio = start,
                 EstadoCita = status,
                 FechaCreacion = DateTime.Now
+            });
+            await Context.SaveChangesAsync();
+        }
+
+        public async Task AddAttentionAsync(
+            int patientId,
+            string odontologistId,
+            int serviceId,
+            DateTime start)
+        {
+            var appointment = new Cita
+            {
+                PacienteId = patientId,
+                OdontologoId = odontologistId,
+                ServicioOdontologicoId = serviceId,
+                FechaHoraInicio = start,
+                EstadoCita = "Atendida",
+                FechaCreacion = DateTime.Now
+            };
+            Context.Citas.Add(appointment);
+            await Context.SaveChangesAsync();
+
+            Context.AtencionesOdontologicas.Add(new AtencionOdontologica
+            {
+                PacienteId = patientId,
+                CitaId = appointment.CitaId,
+                OdontologoId = odontologistId,
+                FechaAtencion = start,
+                MotivoConsulta = "Atención de prueba"
             });
             await Context.SaveChangesAsync();
         }

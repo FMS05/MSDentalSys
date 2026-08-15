@@ -131,10 +131,27 @@ public class TratamientosController : Controller
             return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
         }
 
+        if (!CanTransition(tratamiento.EstadoTratamiento, estado))
+        {
+            TempData["ErrorMessage"] = "No se permite retroceder el estado del tratamiento.";
+            return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
+        }
+
         tratamiento.EstadoTratamiento = estado;
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Estado del tratamiento actualizado correctamente.";
         return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
+    }
+
+    private static bool CanTransition(string currentStatus, string nextStatus)
+    {
+        return (currentStatus, nextStatus) switch
+        {
+            ("Planificado", "En progreso") => true,
+            ("Planificado", "Completado") => true,
+            ("En progreso", "Completado") => true,
+            _ => false
+        };
     }
 
     private IQueryable<AtencionOdontologica> GetAtencionQuery()
