@@ -32,8 +32,8 @@ Contiene la persistencia y el modelo de dominio relacionado con ella:
 
 Contiene la interfaz y la lógica de aplicación MVC:
 
-- `Controllers/`: reciben solicitudes HTTP y coordinan las operaciones del sistema.
-- `Models/ViewModels/`: modelos específicos para formularios y vistas; no sustituyen a las entidades persistentes.
+- `Controllers/`: reciben solicitudes HTTP y coordinan las operaciones del sistema. Incluye `AccountController`, `DashboardController`, `PacientesController`, `CitasController`, `ServiciosController`, `UsuariosController`, `AtencionesController`, `DiagnosticosController`, `TratamientosController` y `EvolucionesClinicasController`.
+- `Models/ViewModels/`: modelos específicos para formularios y vistas; no sustituyen a las entidades persistentes. Incluye `AtencionOdontologicaCreateViewModel`, `DiagnosticoCreateViewModel`, `TratamientoCreateViewModel` y `EvolucionClinicaCreateViewModel`, además de los ViewModels administrativos.
 - `Views/`: vistas Razor.
 - `wwwroot/`: recursos estáticos.
 - `Program.cs`: configuración de servicios, Identity, persistencia, middleware y rutas.
@@ -43,9 +43,8 @@ Contiene la interfaz y la lógica de aplicación MVC:
 
 Contiene las pruebas automatizadas:
 
-- `Controllers/`: pruebas de las acciones de los controladores con contextos aislados.
+- `Controllers/`: pruebas de las acciones administrativas y clínicas con contextos aislados.
 - `Integration/`: pruebas HTTP con `WebApplicationFactory`, entorno `Testing` y autenticación de claims.
-- `Data/` y `Models/`: espacios preparados para pruebas específicas de esas capas.
 - `InfrastructureTests.cs`: validación mínima de la infraestructura xUnit.
 
 ## Separación de responsabilidades
@@ -77,10 +76,25 @@ MSDentalSys/
 │   │   └── MSDentalSys.Data.csproj
 │   └── MSDentalSys.Web/
 │       ├── Controllers/
+│       │   ├── AtencionesController.cs
+│       │   ├── DiagnosticosController.cs
+│       │   ├── EvolucionesClinicasController.cs
+│       │   ├── TratamientosController.cs
+│       │   └── ... controladores administrativos y de autenticación
 │       ├── Models/
 │       │   └── ViewModels/
+│       │       ├── AtencionOdontologicaCreateViewModel.cs
+│       │       ├── DiagnosticoCreateViewModel.cs
+│       │       ├── EvolucionClinicaCreateViewModel.cs
+│       │       ├── TratamientoCreateViewModel.cs
+│       │       └── ... ViewModels administrativos
 │       ├── Properties/
 │       ├── Views/
+│       │   ├── Atenciones/
+│       │   ├── Diagnosticos/
+│       │   ├── EvolucionesClinicas/
+│       │   ├── Tratamientos/
+│       │   └── ... vistas administrativas y compartidas
 │       ├── wwwroot/
 │       ├── Program.cs
 │       ├── appsettings.json
@@ -89,14 +103,30 @@ MSDentalSys/
 ├── tests/
 │   └── MSDentalSys.Tests/
 │       ├── Controllers/
-│       ├── Data/
 │       ├── Integration/
 │       │   ├── AuthorizationIntegrationTests.cs
 │       │   └── CustomWebApplicationFactory.cs
-│       ├── Models/
 │       ├── InfrastructureTests.cs
 │       └── MSDentalSys.Tests.csproj
 └── docs/prototipos/
 ```
 
 La carpeta `docs/prototipos/` conserva el prototipo visual histórico y no forma parte de la infraestructura automatizada nueva.
+
+## Relaciones clínicas principales
+
+- `Cita` 1 : 0..1 `Atención odontológica`.
+- `Atención odontológica` 1 : N `Diagnósticos`.
+- `Atención odontológica` 1 : N `Tratamientos`.
+- `Atención odontológica` 1 : N `Evoluciones clínicas`.
+- `Servicio odontológico` 1 : N `Tratamientos`.
+
+El flujo de la aplicación es:
+
+```text
+Cita
+  → Atención odontológica
+      → Diagnósticos
+      → Tratamientos
+      → Evoluciones clínicas
+```

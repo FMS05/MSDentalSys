@@ -121,6 +121,59 @@ public class AtencionesControllerTests
     }
 
     [Fact]
+    public async Task Details_AdministradorPuedeConsultarAtencionDeCualquierOdontologo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var atencion = await database.AddAttentionAsync(database.OtherOdontologistId);
+        var controller = database.CreateController("Administrador", database.AdminId);
+
+        var result = await controller.Details(atencion.AtencionOdontologicaId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<AtencionOdontologica>(view.Model);
+        Assert.Equal(database.OtherOdontologistId, model.OdontologoId);
+    }
+
+    [Fact]
+    public async Task Details_OdontologoPropietarioPuedeConsultarSuAtencion()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var atencion = await database.AddAttentionAsync(database.OdontologistId, includeClinicalRecords: true);
+        var controller = database.CreateController("Odontologo", database.OdontologistId);
+
+        var result = await controller.Details(atencion.AtencionOdontologicaId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<AtencionOdontologica>(view.Model);
+        Assert.Single(model.Diagnosticos);
+        Assert.Single(model.Tratamientos);
+        Assert.Single(model.EvolucionesClinicas);
+    }
+
+    [Fact]
+    public async Task Details_OdontologoAjeno_NoPuedeConsultarLaAtencion()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var atencion = await database.AddAttentionAsync(database.OtherOdontologistId);
+        var controller = database.CreateController("Odontologo", database.OdontologistId);
+
+        var result = await controller.Details(atencion.AtencionOdontologicaId);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Fact]
+    public async Task Details_AtencionInexistente_DevuelveNotFound()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController("Administrador", database.AdminId);
+
+        var result = await controller.Details(999999);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
     public void Controller_NoTieneAccionesDeEliminacion()
     {
         var actionNames = typeof(AtencionesController).GetMethods()
@@ -147,6 +200,7 @@ public class AtencionesControllerTests
         public string OdontologistId { get; private set; } = string.Empty;
         public string OtherOdontologistId { get; private set; } = string.Empty;
         public string AdminId { get; private set; } = string.Empty;
+        public int ServiceId { get; private set; }
 
         public static async Task<TestDatabase> CreateAsync()
         {
@@ -175,14 +229,15 @@ public class AtencionesControllerTests
             OdontologistId = odontologist.Id;
             OtherOdontologistId = otherOdontologist.Id;
             AdminId = admin.Id;
+            ServiceId = service.ServicioOdontologicoId;
         }
 
-        public async Task<Cita> AddAppointmentAsync(string status)
+        public async Task<Cita> AddAppointmentAsync(string status, string? odontologistId = null)
         {
             var appointment = new Cita
             {
                 PacienteId = PatientId,
-                OdontologoId = OdontologistId,
+                OdontologoId = odontologistId ?? OdontologistId,
                 ServicioOdontologicoId = await Context.ServiciosOdontologicos.Select(s => s.ServicioOdontologicoId).SingleAsync(),
                 FechaHoraInicio = new DateTime(2030, 1, 15, 9, 0, 0),
                 EstadoCita = status
@@ -190,6 +245,45 @@ public class AtencionesControllerTests
             Context.Citas.Add(appointment);
             await Context.SaveChangesAsync();
             return appointment;
+        }
+
+        public async Task<AtencionOdontologica> AddAttentionAsync(string odontologistId, bool includeClinicalRecords = false)
+        {
+            var cita = await AddAppointmentAsync("Atendida", odontologistId);
+            var atencion = new AtencionOdontologica
+            {
+                PacienteId = PatientId,
+                CitaId = cita.CitaId,
+                OdontologoId = odontologistId,
+                FechaAtencion = new DateTime(2030, 1, 15, 9, 30, 0),
+                MotivoConsulta = "Consulta de prueba"
+            };
+            Context.AtencionesOdontologicas.Add(atencion);
+            await Context.SaveChangesAsync();
+
+            if (includeClinicalRecords)
+            {
+                Context.Diagnosticos.Add(new Diagnostico
+                {
+                    AtencionOdontologicaId = atencion.AtencionOdontologicaId,
+                    Descripcion = "Diagnóstico de prueba"
+                });
+                Context.Tratamientos.Add(new Tratamiento
+                {
+                    AtencionOdontologicaId = atencion.AtencionOdontologicaId,
+                    ServicioOdontologicoId = ServiceId,
+                    EstadoTratamiento = "Planificado"
+                });
+                Context.EvolucionesClinicas.Add(new EvolucionClinica
+                {
+                    AtencionOdontologicaId = atencion.AtencionOdontologicaId,
+                    FechaEvolucion = new DateTime(2030, 1, 16),
+                    Descripcion = "Evolución de prueba"
+                });
+                await Context.SaveChangesAsync();
+            }
+
+            return atencion;
         }
 
         public AtencionesController CreateController(string role, string userId)

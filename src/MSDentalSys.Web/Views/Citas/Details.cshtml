@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Detalle de cita";
     var canManageAppointment = User.IsInRole("Administrador") || User.IsInRole("Recepcionista");
-    var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
+    var statuses = new[] { "Pendiente", "Confirmada", "Cancelada", "No asistió" };
     var atencion = ViewData["Atencion"] as MSDentalSys.Data.Models.AtencionOdontologica;
     var canStartAttention = (User.IsInRole("Administrador") ||
         (User.IsInRole("Odontologo") && Model.OdontologoId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)) &&
@@ -115,8 +115,7 @@
                     <form asp-action="UpdateStatus" asp-route-id="@Model.CitaId" method="post">
                         <input type="hidden" name="CitaId" value="@Model.CitaId" />
                         <select name="EstadoCita" class="form-select mb-2">
-                            <option value="Atendida">Atendida</option>
-                            <option value="@statuses[4]">@statuses[4]</option>
+                            <option value="@statuses[3]">@statuses[3]</option>
                         </select>
                         <button type="submit" class="btn btn-ms-primary w-100">Guardar estado</button>
                     </form>

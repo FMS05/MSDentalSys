@@ -47,7 +47,7 @@ Los roles definidos son `Administrador`, `Odontologo` y `Recepcionista`.
 
 ### Administrador
 
-Puede gestionar pacientes, citas, servicios y usuarios, además de consultar las estadísticas generales del sistema.
+Puede gestionar pacientes, citas, servicios y usuarios, además de consultar las estadísticas generales del sistema. También puede acceder a los módulos clínicos y gestionar la información de atención odontológica.
 
 ### Recepcionista
 
@@ -55,7 +55,7 @@ Puede consultar pacientes, registrar y gestionar administrativamente citas, cons
 
 ### Odontologo
 
-Puede consultar pacientes y servicios, consultar citas y actualizar los estados clínicos permitidos de una cita. El Dashboard filtra sus estadísticas de citas por odontólogo, mientras que el total de pacientes activos es global. No puede administrar usuarios ni crear o reagendar citas administrativamente.
+Puede consultar pacientes y servicios, consultar sus citas y actualizar los estados clínicos permitidos de una cita. También puede registrar atenciones, diagnósticos, tratamientos y evoluciones clínicas únicamente para sus atenciones asignadas. El Dashboard filtra sus estadísticas de citas por odontólogo, mientras que el total de pacientes activos es global. No puede administrar usuarios ni crear o reagendar citas administrativamente.
 
 ## Módulos implementados
 
@@ -65,6 +65,20 @@ Puede consultar pacientes y servicios, consultar citas y actualizar los estados 
 - Citas.
 - Servicios odontológicos.
 - Administración de usuarios.
+- Atención odontológica.
+- Diagnósticos.
+- Tratamientos.
+- Evoluciones clínicas.
+
+El flujo clínico implementado es:
+
+```text
+Cita
+  → Atención odontológica
+      → Diagnósticos
+      → Tratamientos
+      → Evoluciones clínicas
+```
 
 ## Reglas de negocio importantes
 
@@ -91,6 +105,19 @@ Los estados utilizados son `Pendiente`, `Confirmada`, `Atendida`, `Cancelada` y 
 - Los servicios pueden activarse y desactivarse lógicamente.
 - Cada servicio puede registrar una duración estimada en minutos.
 
+### Atención odontológica
+
+- Una cita puede tener cero o una atención odontológica.
+- Una atención conserva el paciente y el odontólogo asignados a la cita.
+- Una atención puede registrar múltiples diagnósticos, tratamientos y evoluciones clínicas.
+- Los diagnósticos, tratamientos y evoluciones no se eliminan físicamente desde los módulos clínicos.
+
+### Tratamientos
+
+- Solo se pueden asociar servicios odontológicos activos.
+- Los estados permitidos son `Planificado`, `En progreso` y `Completado`.
+- Un tratamiento completado no vuelve a un estado anterior.
+
 ## Base de datos
 
 En ejecución normal, la aplicación utiliza SQL Server mediante Entity Framework Core. El acceso se centraliza en `ApplicationDbContext`. El proyecto `MSDentalSys.Data` contiene las migraciones existentes y `ApplicationDbContextFactory` permite crear el contexto para operaciones de design-time.
@@ -113,9 +140,9 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 ## Pruebas automatizadas
 
-La solución cuenta con pruebas para pacientes, citas, usuarios, servicios, Dashboard, Login/autenticación, autorización HTTP e infraestructura.
+La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado actual: **59 pruebas correctas**.
+Estado actual: **106 pruebas correctas**.
 
 Las pruebas de datos utilizan SQLite InMemory y no utilizan `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en el entorno `Testing`, con una base SQLite aislada y un esquema de autenticación exclusivo para Tests.
 
@@ -130,10 +157,12 @@ dotnet test .\MSDentalSys.sln
 - Las acciones POST utilizan protección antiforgery cuando corresponde.
 - Las desactivaciones son lógicas.
 - El administrador inicial está protegido por reglas específicas del sistema.
+- La autorización clínica valida el rol y, para el odontólogo, la asignación de la atención odontológica.
+- Los módulos clínicos no realizan eliminación física de atenciones, diagnósticos, tratamientos ni evoluciones.
 
 ## Estado actual del proyecto
 
-Los principales módulos administrativos están implementados y validados mediante pruebas automatizadas. El sistema continúa en desarrollo para ampliar la parte clínica.
+Los módulos administrativos y clínicos indicados en esta documentación están implementados y validados mediante pruebas automatizadas. El proyecto se encuentra en una etapa avanzada y de cierre técnico; aún pueden existir mejoras funcionales, de usabilidad, documentación y despliegue antes de considerarlo completamente finalizado.
 
 ## Autor / contexto académico
 

@@ -269,11 +269,17 @@ namespace MSDentalSys.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            if (User.IsInRole("Odontologo") && model.EstadoCita != "Atendida")
+            if (model.EstadoCita == "Atendida")
+            {
+                TempData["ErrorMessage"] = "Una cita solo puede marcarse como atendida al registrar su atención odontológica.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (User.IsInRole("Odontologo"))
             {
                 if (model.EstadoCita != EstadosPermitidos[4])
                 {
-                    TempData["ErrorMessage"] = "El odontÃ³logo solo puede marcar citas como Atendida o No asistiÃ³.";
+                    TempData["ErrorMessage"] = "El odontólogo solo puede marcar citas como No asistió.";
                     return RedirectToAction(nameof(Details), new { id });
                 }
             }
