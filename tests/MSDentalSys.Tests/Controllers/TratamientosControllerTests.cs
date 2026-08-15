@@ -147,6 +147,20 @@ public class TratamientosControllerTests
     }
 
     [Fact]
+    public async Task UpdateStatus_EnProgresoAPlanificado_RechazaYConservaEstado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var treatment = await database.AddTreatmentAsync("En progreso");
+        var controller = database.CreateController("Administrador", database.AdminId);
+
+        var result = await controller.UpdateStatus(treatment.TratamientoId, "Planificado");
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("En progreso", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Contains("retroceder", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task UpdateStatus_PlanificadoACompletado_Actualiza()
     {
         await using var database = await TestDatabase.CreateAsync();
@@ -168,6 +182,20 @@ public class TratamientosControllerTests
         await controller.UpdateStatus(treatment.TratamientoId, "En progreso");
 
         Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_CompletadoNoVuelveAPlanificado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var treatment = await database.AddTreatmentAsync("Completado");
+        var controller = database.CreateController("Administrador", database.AdminId);
+
+        var result = await controller.UpdateStatus(treatment.TratamientoId, "Planificado");
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Contains("completado", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -221,6 +249,7 @@ public class TratamientosControllerTests
         await controller.UpdateStatus(treatment.TratamientoId, "Cancelado");
 
         Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Contains("no es válido", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
