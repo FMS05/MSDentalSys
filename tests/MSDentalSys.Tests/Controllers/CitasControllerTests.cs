@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Security.Claims;
 using MSDentalSys.Data.Context;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Controllers;
@@ -173,12 +174,14 @@ public class CitasControllerTests
         Assert.Contains("atendida", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task UpdateStatus_CitaPendiente_AceptaEstadoAtendida()
+    [Theory]
+    [InlineData("Pendiente")]
+    [InlineData("Confirmada")]
+    public async Task UpdateStatus_AtendidaManual_RechazaYConservaEstado(string originalStatus)
     {
         await using var database = await TestDatabase.CreateAsync();
         await database.AddSupportDataAsync();
-        var cita = database.CreateAppointment(new DateTime(2030, 1, 16, 11, 0, 0), "Pendiente");
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 16, 11, 0, 0), originalStatus);
         database.Context.Citas.Add(cita);
         await database.Context.SaveChangesAsync();
 
@@ -190,7 +193,32 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Atendida", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(originalStatus, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("Recepcionista")]
+    [InlineData("Odontologo")]
+    public async Task UpdateStatus_CualquierRol_RechazaAtendidaManual(string role)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 16, 11, 30, 0), "Pendiente");
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var controller = database.CreateController(role);
+        var result = await controller.UpdateStatus(cita.CitaId, new ActualizarEstadoCitaViewModel
+        {
+            CitaId = cita.CitaId,
+            EstadoCita = "Atendida"
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Pendiente", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -302,9 +330,18 @@ public class CitasControllerTests
             ServiceId = service.ServicioOdontologicoId;
         }
 
-        public CitasController CreateController()
+        public CitasController CreateController(string? role = null)
         {
-            var httpContext = new DefaultHttpContext();
+            var httpContext = new DefaultHttpContext
+            {
+                User = role is null
+                    ? new ClaimsPrincipal(new ClaimsIdentity())
+                    : new ClaimsPrincipal(new ClaimsIdentity(new[]
+                    {
+                        new Claim(ClaimTypes.NameIdentifier, OdontologistId),
+                        new Claim(ClaimTypes.Role, role)
+                    }, "Test"))
+            };
             var controller = new CitasController(
                 Context,
                 _services.GetRequiredService<UserManager<ApplicationUser>>())

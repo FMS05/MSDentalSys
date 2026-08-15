@@ -12,15 +12,19 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 
 | Grupo | Pruebas |
 |---|---:|
+| Infraestructura | 1 |
+| Login/autenticación | 7 |
+| Atención odontológica | 9 |
 | Pacientes | 5 |
 | Citas | 9 |
-| Usuarios | 9 |
 | Servicios | 7 |
+| Usuarios | 9 |
 | Dashboard | 8 |
-| Login/autenticación | 7 |
+| Diagnósticos | 9 |
+| Tratamientos | 17 |
+| Evoluciones clínicas | 12 |
 | Integración HTTP/autorización | 13 |
-| Infraestructura | 1 |
-| **Total** | **59** |
+| **Total** | **106** |
 
 ## Cobertura por grupo
 
@@ -30,6 +34,10 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 - **Servicios**: creación, edición, activación/desactivación y búsquedas.
 - **Dashboard**: conteos generales y filtrado de citas para odontólogos.
 - **Login/autenticación**: credenciales, usuarios inactivos, logout y `RememberMe`.
+- **Atención odontológica**: creación desde una cita válida, prevención de atenciones duplicadas, conservación del paciente y odontólogo asignados y validación del odontólogo autorizado.
+- **Diagnósticos**: creación asociada a una atención, múltiples diagnósticos por atención y validación del odontólogo asignado.
+- **Tratamientos**: asociación con servicios activos, múltiples tratamientos por atención, estados `Planificado`, `En progreso` y `Completado`, transiciones válidas y restricciones del odontólogo asignado.
+- **Evoluciones clínicas**: validación de fecha y descripción, múltiples evoluciones por atención y validación del odontólogo asignado.
 - **Integración HTTP/autorización**: autenticación requerida, redirecciones, permisos por rol y acceso permitido o rechazado.
 - **Infraestructura**: funcionamiento básico de xUnit.
 
@@ -41,6 +49,8 @@ Las pruebas unitarias y de controlador utilizan bases SQLite en memoria. Las pru
 
 La autenticación de integración no utiliza usuarios reales ni User Secrets. El esquema de Tests emite claims controlados para simular cada rol y permitir verificar la autorización real de los controladores.
 
+Las pruebas clínicas verifican además que el odontólogo solo pueda operar sobre la atención que le corresponde, que una atención pueda contener múltiples diagnósticos y evoluciones, y que los tratamientos respeten sus estados y transiciones permitidas.
+
 ## Comandos de validación
 
 ```powershell
@@ -51,11 +61,11 @@ dotnet test .\MSDentalSys.sln
 Estado validado actualmente:
 
 ```text
-59 pruebas correctas
+106 pruebas correctas
 0 fallidas
 0 omitidas
 ```
 
 ## Alcance y limitaciones
 
-Las pruebas HTTP validan el pipeline de autenticación y autorización de rutas con `WebApplicationFactory`. No son pruebas de navegador y no utilizan Selenium, Playwright ni servicios externos. Tampoco constituyen pruebas de rendimiento.
+Las pruebas HTTP validan el pipeline de autenticación y autorización de rutas con `WebApplicationFactory`, incluyendo permisos por rol y acceso de usuarios anónimos. La autenticación se simula mediante claims controlados en el entorno `Testing`. No son pruebas de navegador y no utilizan Selenium, Playwright ni servicios externos. Tampoco constituyen pruebas de rendimiento ni cobertura total del sistema.

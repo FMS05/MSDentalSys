@@ -123,7 +123,18 @@ public class AtencionesController : Controller
             .AsNoTracking()
             .SingleOrDefaultAsync(a => a.AtencionOdontologicaId == id);
 
-        return atencion is null ? NotFound() : View(atencion);
+        if (atencion is null)
+        {
+            return NotFound();
+        }
+
+        if (User.IsInRole("Odontologo") &&
+            atencion.OdontologoId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+        {
+            return Forbid();
+        }
+
+        return View(atencion);
     }
 
     private IQueryable<Cita> GetCitaQuery()
