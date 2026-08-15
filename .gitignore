@@ -1,0 +1,58 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+## Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Tt]est[Rr]esult/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+*.tmp
+*.cache
+*.pdb
+*.dll
+*.exe
+*.log
+*.nupkg
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+
+## NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+## Rider
+.idea/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+Desktop.ini
+
+## Coverage / test output
+coverage/
+*.cobertura.xml
+
+## Local configuration
+appsettings.local.json
