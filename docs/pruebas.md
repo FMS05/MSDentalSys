@@ -24,7 +24,7 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 | Tratamientos | 17 |
 | Evoluciones clínicas | 12 |
 | Integración HTTP/autorización | 13 |
-| **Total** | **106** |
+| **Total** | **123** |
 
 ## Cobertura por grupo
 
@@ -61,7 +61,7 @@ dotnet test .\MSDentalSys.sln
 Estado validado actualmente:
 
 ```text
-106 pruebas correctas
+123 pruebas correctas
 0 fallidas
 0 omitidas
 ```

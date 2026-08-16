@@ -241,6 +241,110 @@ public class CitasControllerTests
         Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
     }
 
+    [Fact]
+    public async Task Index_Odontologo_SoloDevuelveSusCitas()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var otherOdontologistId = await database.AddOtherOdontologistAsync();
+        database.Context.Citas.AddRange(
+            database.CreateAppointment(new DateTime(2030, 1, 17, 9, 0, 0)),
+            database.CreateAppointment(new DateTime(2030, 1, 17, 10, 0, 0), odontologistId: otherOdontologistId));
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController("Odontologo").Index(null, null, null);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var appointments = Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model);
+        var appointment = Assert.Single(appointments);
+        Assert.Equal(database.OdontologistId, appointment.OdontologoId);
+    }
+
+    [Fact]
+    public async Task Details_Odontologo_CitaPropia_Permitido()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 17, 11, 0, 0));
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController("Odontologo").Details(cita.CitaId);
+
+        Assert.IsType<ViewResult>(result);
+    }
+
+    [Fact]
+    public async Task Details_Odontologo_CitaAjena_DevuelveForbid()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var otherOdontologistId = await database.AddOtherOdontologistAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 17, 12, 0, 0), odontologistId: otherOdontologistId);
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController("Odontologo").Details(cita.CitaId);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_Odontologo_CitaPropia_AceptaNoAsistio()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 17, 13, 0, 0), "Confirmada");
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController("Odontologo").UpdateStatus(cita.CitaId, new ActualizarEstadoCitaViewModel
+        {
+            CitaId = cita.CitaId,
+            EstadoCita = "No asistió"
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_Odontologo_CitaAjena_DevuelveForbidYConservaEstado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var otherOdontologistId = await database.AddOtherOdontologistAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 17, 14, 0, 0), "Confirmada", odontologistId: otherOdontologistId);
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController("Odontologo").UpdateStatus(cita.CitaId, new ActualizarEstadoCitaViewModel
+        {
+            CitaId = cita.CitaId,
+            EstadoCita = "No asistió"
+        });
+
+        Assert.IsType<ForbidResult>(result);
+        Assert.Equal("Confirmada", (await database.Context.Citas.SingleAsync()).EstadoCita);
+    }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("Recepcionista")]
+    public async Task Details_RolesAdministrativos_PuedenConsultarCitaAjena(string role)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var otherOdontologistId = await database.AddOtherOdontologistAsync();
+        var cita = database.CreateAppointment(new DateTime(2030, 1, 17, 15, 0, 0), odontologistId: otherOdontologistId);
+        database.Context.Citas.Add(cita);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController(role).Details(cita.CitaId);
+
+        Assert.IsType<ViewResult>(result);
+    }
+
     private sealed class TestDatabase : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -356,12 +460,31 @@ public class CitasControllerTests
             return controller;
         }
 
-        public Cita CreateAppointment(DateTime start, string status = "Pendiente", string? observations = null)
+        public async Task<string> AddOtherOdontologistAsync()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = "odontologo.otro@example.test",
+                NormalizedUserName = "ODONTOLOGO.OTRO@EXAMPLE.TEST",
+                Email = "odontologo.otro@example.test",
+                NormalizedEmail = "ODONTOLOGO.OTRO@EXAMPLE.TEST",
+                Nombre = "Otro",
+                Apellido = "Odontologo",
+                Estado = true,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            Context.Users.Add(user);
+            await Context.SaveChangesAsync();
+            return user.Id;
+        }
+
+        public Cita CreateAppointment(DateTime start, string status = "Pendiente", string? observations = null, string? odontologistId = null)
         {
             return new Cita
             {
                 PacienteId = PatientId,
-                OdontologoId = OdontologistId,
+                OdontologoId = odontologistId ?? OdontologistId,
                 ServicioOdontologicoId = ServiceId,
                 FechaHoraInicio = start,
                 EstadoCita = status,

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,11 @@ namespace MSDentalSys.Web.Controllers
                 .Include(c => c.ServicioOdontologico)
                 .AsNoTracking()
                 .AsQueryable();
+
+            if (User.IsInRole("Odontologo"))
+            {
+                query = query.Where(c => c.OdontologoId == User.FindFirstValue(ClaimTypes.NameIdentifier));
+            }
 
             if (fecha.HasValue)
             {
@@ -88,14 +94,21 @@ namespace MSDentalSys.Web.Controllers
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CitaId == id);
 
-            if (cita is not null)
+            if (cita is null)
             {
-                ViewData["Atencion"] = await _context.AtencionesOdontologicas
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(a => a.CitaId == cita.CitaId);
+                return NotFound();
             }
 
-            return cita is null ? NotFound() : View(cita);
+            if (!CanAccessAppointment(cita))
+            {
+                return Forbid();
+            }
+
+            ViewData["Atencion"] = await _context.AtencionesOdontologicas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.CitaId == cita.CitaId);
+
+            return View(cita);
         }
 
         [HttpGet]
@@ -258,6 +271,11 @@ namespace MSDentalSys.Web.Controllers
                 return NotFound();
             }
 
+            if (!CanAccessAppointment(cita))
+            {
+                return Forbid();
+            }
+
             if (IsFinalStatus(cita.EstadoCita))
             {
                 return RedirectFinalAppointment(cita.EstadoCita, id);
@@ -318,6 +336,12 @@ namespace MSDentalSys.Web.Controllers
         private static bool IsFinalStatus(string status)
         {
             return status == "Cancelada" || status == "Atendida";
+        }
+
+        private bool CanAccessAppointment(Cita cita)
+        {
+            return !User.IsInRole("Odontologo") ||
+                cita.OdontologoId == User.FindFirstValue(ClaimTypes.NameIdentifier);
         }
 
         private IQueryable<Cita> GetCitaQuery()
