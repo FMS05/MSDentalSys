@@ -128,6 +128,21 @@ Las cadenas de conexión, contraseñas y secretos no forman parte de esta docume
 
 La configuración general se encuentra en `appsettings.json` y `appsettings.Development.json`. Los datos sensibles se gestionan mediante User Secrets cuando corresponde. No se incluyen valores secretos en el repositorio.
 
+## Configuración local para desarrollo
+
+La aplicación obtiene la conexión de base de datos mediante `ConnectionStrings:DefaultConnection`. `Program.cs` requiere ese valor para iniciar la aplicación. El repositorio puede incluir una conexión base sin credenciales, pero cada desarrollador puede sobrescribirla localmente mediante User Secrets. Los User Secrets no se almacenan ni se transfieren mediante Git.
+
+Para configurar una conexión local, sustituye `TU_SERVIDOR` por el nombre de la instancia SQL Server instalada en tu equipo:
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=TU_SERVIDOR;Database=MSDentalSysDB;Trusted_Connection=True;TrustServerCertificate=True;" --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
+dotnet user-secrets set "SeedAdmin:Password" "TU_CLAVE_SEGURA" --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
+```
+
+Algunos nombres de servidor posibles son `.\SQLEXPRESS`, `localhost` y `(localdb)\MSSQLLocalDB`; no todos funcionaran automaticamente. Cada integrante debe utilizar el nombre de instancia SQL Server que tenga instalado. Si una rama o copia del proyecto no contiene una conexion base, debe configurarse `ConnectionStrings:DefaultConnection` mediante User Secrets antes de ejecutar la aplicacion.
+
+`ApplicationDbContextFactory` se utiliza para operaciones de Entity Framework Core en tiempo de diseno y actualmente esta configurada para SQL Server local. Quienes utilicen otra instancia pueden necesitar revisar esa configuracion antes de ejecutar comandos de migracion. Las migraciones no forman parte de la instalacion normal.
+
 ## Ejecución
 
 Se requiere una conexión SQL Server correctamente configurada para ejecutar la aplicación normalmente.
