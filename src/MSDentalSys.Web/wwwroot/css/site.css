@@ -509,21 +509,9 @@ body {
 .service-name-cell {
   display: flex;
   align-items: center;
-  gap: .7rem;
+  gap: 0;
   color: var(--ms-charcoal);
   white-space: nowrap;
-}
-
-.service-icon,
-.service-detail-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  color: #8d6f3d;
-  background: #fbf4e6;
-  font-size: 1.05rem;
 }
 
 .service-description {
@@ -563,13 +551,6 @@ body {
   margin-bottom: 1.5rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid #eeeae3;
-}
-
-.service-detail-icon {
-  flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  font-size: 1.25rem;
 }
 
 .service-detail-header h2 {
@@ -1549,4 +1530,196 @@ body {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/* Cierre visual institucional */
+:root {
+  --ms-charcoal: #171717;
+  --ms-gold: #b9975b;
+  --ms-gold-light: #d6bb82;
+  --ms-cream: #f7f4ee;
+}
+
+body {
+  background: var(--ms-cream);
+}
+
+.site-navbar {
+  min-height: 68px;
+  padding: .65rem 1rem;
+  background: var(--ms-charcoal) !important;
+  border-bottom: 2px solid var(--ms-gold) !important;
+}
+
+.site-navbar .navbar-brand {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.site-navbar .navbar-brand:hover,
+.site-navbar .navbar-brand:focus {
+  color: var(--ms-gold-light);
+}
+
+.navbar-brand-logo {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(214, 187, 130, .7);
+  border-radius: 9px;
+  background: #0d0d0d;
+  object-fit: contain;
+}
+
+.site-navbar .navbar-toggler {
+  border-color: rgba(214, 187, 130, .65);
+}
+
+.site-navbar .navbar-toggler-icon {
+  filter: invert(1) sepia(.3) saturate(.7);
+}
+
+.site-navbar .navbar-nav {
+  gap: .2rem;
+}
+
+.site-navbar .nav-link {
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, .78) !important;
+  font-size: .9rem;
+  font-weight: 600;
+  padding: .65rem .8rem;
+  transition: color .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.site-navbar .nav-link:hover,
+.site-navbar .nav-link:focus,
+.site-navbar .nav-link.active {
+  border-bottom-color: var(--ms-gold);
+  color: var(--ms-gold-light) !important;
+  background: rgba(185, 151, 91, .1);
+}
+
+.site-navbar .nav-logout {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.site-navbar .navbar-collapse {
+  align-items: center;
+}
+
+.login-logo {
+  width: min(100%, 300px);
+  height: 112px;
+  border: 1px solid rgba(214, 187, 130, .65);
+  border-radius: 14px;
+  background: #0d0d0d;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 1.4rem;
+}
+
+.doctor-photo-frame {
+  position: relative;
+  width: min(100%, 330px);
+  height: 176px;
+  margin-top: 2rem;
+  overflow: hidden;
+  border: 1px solid rgba(214, 187, 130, .55);
+  border-radius: 18px;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, .24);
+}
+
+.doctor-photo-frame::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(23, 23, 23, .08), rgba(23, 23, 23, .48));
+  content: "";
+  pointer-events: none;
+}
+
+.doctor-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.mobile-brand-logo {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--ms-gold);
+  border-radius: 7px;
+  object-fit: contain;
+}
+
+.dashboard-institutional {
+  margin: -.3rem 0 0;
+  color: var(--ms-gold);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dashboard-card {
+  border-top: 3px solid var(--ms-gold);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(23, 23, 23, .1);
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus {
+  border-color: var(--ms-charcoal);
+  background: var(--ms-charcoal);
+}
+
+.btn-primary:focus,
+.btn-ms-primary:focus,
+.btn-login:focus {
+  box-shadow: 0 0 0 .2rem rgba(185, 151, 91, .28);
+}
+
+.status-confirmada {
+  color: #25604b;
+  background: #e5f2eb;
+}
+
+.status-atendida {
+  color: #174d3d;
+  background: #cfe8dc;
+}
+
+.status-cancelada,
+.status-no-asisti\00F3 {
+  color: #8b3636;
+  background: #f8e1df;
+}
+
+@media (max-width: 575.98px) {
+  .site-navbar {
+    padding-inline: .7rem;
+  }
+
+  .login-logo {
+    width: 220px;
+    height: 86px;
+  }
+
+  .doctor-photo-frame {
+    height: 145px;
+  }
 }
