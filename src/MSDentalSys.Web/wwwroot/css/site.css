@@ -1610,6 +1610,7 @@ body {
 }
 
 .login-logo {
+  align-self: center;
   width: min(100%, 300px);
   height: 112px;
   border: 1px solid rgba(214, 187, 130, .65);
@@ -1623,8 +1624,8 @@ body {
 .doctor-photo-frame {
   position: relative;
   width: min(100%, 330px);
-  height: 176px;
-  margin-top: 2rem;
+  height: 195px;
+  margin: 1.5rem 0 1rem;
   overflow: hidden;
   border: 1px solid rgba(214, 187, 130, .55);
   border-radius: 18px;
@@ -1644,7 +1645,7 @@ body {
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: center 28%;
+  object-position: center 20%;
 }
 
 .mobile-brand {
@@ -1720,6 +1721,7 @@ body {
   }
 
   .doctor-photo-frame {
-    height: 145px;
+    height: 165px;
+    margin-bottom: .75rem;
   }
 }
