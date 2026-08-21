@@ -10,10 +10,16 @@
     <link rel="stylesheet" href="~/MSDentalSys.styles.css" asp-append-version="true" />
 </head>
 <body>
+    @{
+        var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+    }
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm site-navbar border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Dashboard" asp-action="Index">MS DentalSys</a>
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Dashboard" asp-action="Index">
+                    <img src="~/imagenes/logo-clinica.jpeg" class="navbar-brand-logo" alt="Clinica Dental Dra. Michelle Santana" />
+                    <span>MS DentalSys</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -23,29 +29,29 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                                <a class="nav-link @(currentController == "Dashboard" ? "active" : "")" asp-area="" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
                             </li>
                             @if (User.IsInRole("Administrador") || User.IsInRole("Odontologo") || User.IsInRole("Recepcionista"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Pacientes" asp-action="Index">Pacientes</a>
+                                    <a class="nav-link @(currentController == "Pacientes" ? "active" : "")" asp-area="" asp-controller="Pacientes" asp-action="Index">Pacientes</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Citas" asp-action="Index">Citas</a>
+                                    <a class="nav-link @(currentController == "Citas" ? "active" : "")" asp-area="" asp-controller="Citas" asp-action="Index">Citas</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Servicios" asp-action="Index">Servicios</a>
+                                    <a class="nav-link @(currentController == "Servicios" ? "active" : "")" asp-area="" asp-controller="Servicios" asp-action="Index">Servicios</a>
                                 </li>
                             }
                             @if (User.IsInRole("Administrador"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Usuarios" asp-action="Index">Usuarios</a>
+                                    <a class="nav-link @(currentController == "Usuarios" ? "active" : "")" asp-area="" asp-controller="Usuarios" asp-action="Index">Usuarios</a>
                                 </li>
                             }
                             <li class="nav-item">
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                    <button type="submit" class="nav-link text-dark border-0 bg-transparent">Cerrar sesión</button>
+                                    <button type="submit" class="nav-link nav-logout border-0 bg-transparent">Cerrar sesion</button>
                                 </form>
                             </li>
                         }
