@@ -105,12 +105,6 @@ public class TratamientosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(int id, string estado)
     {
-        if (!EstadosPermitidos.Contains(estado))
-        {
-            TempData["ErrorMessage"] = "El estado seleccionado no es válido.";
-            return RedirectToAction("Details", "Atenciones", new { id });
-        }
-
         var tratamiento = await _context.Tratamientos
             .Include(t => t.AtencionOdontologica)
             .SingleOrDefaultAsync(t => t.TratamientoId == id);
@@ -123,6 +117,12 @@ public class TratamientosController : Controller
         if (!CanAccessAttention(tratamiento.AtencionOdontologica))
         {
             return Forbid();
+        }
+
+        if (!EstadosPermitidos.Contains(estado))
+        {
+            TempData["ErrorMessage"] = "El estado seleccionado no es válido.";
+            return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
         }
 
         if (tratamiento.EstadoTratamiento == "Completado")
