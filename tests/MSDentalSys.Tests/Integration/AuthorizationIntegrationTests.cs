@@ -122,6 +122,28 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
     }
 
     [Fact]
+    public async Task Atenciones_Recepcionista_EsRechazadoSin404()
+    {
+        using var client = CreateClient("Recepcionista");
+        var response = await client.GetAsync("/Atenciones/Details/1");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AccessDenied_UsuarioAutenticado_MuestraPaginaAmigable()
+    {
+        using var client = CreateClient("Recepcionista");
+        var response = await client.GetAsync("/Account/AccessDenied");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Acceso restringido", content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ReturnUrl", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Usuarios_Administrador_EsPermitido()
     {
         using var client = CreateClient("Administrador");

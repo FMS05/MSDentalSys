@@ -253,6 +253,25 @@ public class TratamientosControllerTests
     }
 
     [Fact]
+    public async Task UpdateStatus_EstadoNoPermitido_RedireccionaAlDetalleDeLaAtencion()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddAttentionAsync();
+        var treatment = await database.AddTreatmentAsync("Planificado");
+        var controller = database.CreateController("Administrador", database.AdminId);
+
+        var result = await controller.UpdateStatus(treatment.TratamientoId, "Estado inexistente");
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Atenciones", redirect.ControllerName);
+        Assert.Equal("Details", redirect.ActionName);
+        Assert.Equal(treatment.AtencionOdontologicaId, redirect.RouteValues!["id"]);
+        Assert.NotEqual(treatment.TratamientoId, redirect.RouteValues["id"]);
+        Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Contains("no es válido", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Controller_NoTieneAccionesDeEliminacion()
     {
         var actionNames = typeof(TratamientosController).GetMethods()
