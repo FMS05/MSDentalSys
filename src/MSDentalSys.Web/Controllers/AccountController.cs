@@ -32,6 +32,13 @@ namespace MSDentalSys.Web.Controllers
             return View();
         }
 
+        [HttpGet]
+        [Authorize]
+        public IActionResult AccessDenied()
+        {
+            return View();
+        }
+
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]

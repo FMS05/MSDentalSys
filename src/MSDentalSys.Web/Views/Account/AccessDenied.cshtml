@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Acceso restringido";
+}
+
+<div class="login-page">
+    <div class="login-shell access-denied-shell">
+        <div class="login-brand-panel">
+            <img src="~/imagenes/logo-clinica.jpeg" class="login-logo" alt="Clinica Dental Dra. Michelle Santana" />
+            <p class="brand-kicker">MS DentalSys</p>
+            <h1>Acceso restringido.</h1>
+            <p class="brand-subtitle">Esta secci&oacute;n requiere permisos cl&iacute;nicos espec&iacute;ficos.</p>
+            <div class="brand-line"></div>
+            <p class="brand-note">Si consideras que necesitas acceso, contacta al administrador del sistema.</p>
+        </div>
+        <div class="login-form-panel">
+            <div class="login-form-content access-denied-content">
+                <div class="mobile-brand">
+                    <img src="~/imagenes/logo-clinica.jpeg" class="mobile-brand-logo" alt="Clinica Dental Dra. Michelle Santana" />
+                    <span>MS DentalSys</span>
+                </div>
+                <h2>No tienes permisos</h2>
+                <p class="login-intro">No tienes permisos para acceder a esta secci&oacute;n.</p>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-login w-100">Volver al Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
