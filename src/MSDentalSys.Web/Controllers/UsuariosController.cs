@@ -227,6 +227,7 @@ namespace MSDentalSys.Web.Controllers
                 var rolesToRemove = currentRoles
                     .Where(role => RolesGestionables.Contains(role) && role != model.Rol)
                     .ToList();
+                var roleChanged = !currentRoles.Contains(model.Rol) || rolesToRemove.Count > 0;
 
                 if (!currentRoles.Contains(model.Rol))
                 {
@@ -244,6 +245,16 @@ namespace MSDentalSys.Web.Controllers
                     if (!removeResult.Succeeded)
                     {
                         AddIdentityErrors(removeResult, nameof(model.Rol));
+                        return View(model);
+                    }
+                }
+
+                if (roleChanged)
+                {
+                    var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+                    if (!stampResult.Succeeded)
+                    {
+                        AddIdentityErrors(stampResult);
                         return View(model);
                     }
                 }
@@ -281,8 +292,11 @@ namespace MSDentalSys.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
+            var isDeactivation = user.Estado && !state;
             user.Estado = state;
-            var result = await _userManager.UpdateAsync(user);
+            var result = isDeactivation
+                ? await _userManager.UpdateSecurityStampAsync(user)
+                : await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
                 AddIdentityErrors(result);

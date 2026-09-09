@@ -226,6 +226,106 @@ public class UsuariosControllerTests
         Assert.Contains("no se puede cambiar el rol", controller.ModelState[nameof(UsuarioEditViewModel.Rol)]!.Errors[0].ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Deactivate_UsuarioActivo_RenuevaSecurityStamp()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("sello@example.test", "Recepcionista", "Usuario", "Prueba");
+        var stamp = user.SecurityStamp;
+        Assert.IsType<RedirectToActionResult>(await database.CreateController().Deactivate(user.Id));
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.False(stored.Estado);
+        Assert.NotEqual(stamp, stored.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Activate_TrasDesactivacion_ConservaSecurityStampRevocado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("sello@example.test", "Recepcionista", "Usuario", "Prueba");
+        var originalStamp = user.SecurityStamp;
+        Assert.IsType<RedirectToActionResult>(await database.CreateController().Deactivate(user.Id));
+        var revokedStamp = user.SecurityStamp;
+        Assert.NotEqual(originalStamp, revokedStamp);
+        Assert.IsType<RedirectToActionResult>(await database.CreateController().Activate(user.Id));
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.True(stored.Estado);
+        Assert.Equal(revokedStamp, stored.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Edit_CambioEfectivoDeRol_RenuevaSecurityStamp()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("sello@example.test", "Recepcionista", "Usuario", "Prueba");
+        var stamp = user.SecurityStamp;
+        var result = await database.CreateController().Edit(user.Id, new UsuarioEditViewModel
+        {
+            Id = user.Id, Email = user.Email!, Nombre = user.Nombre, Apellido = user.Apellido, Rol = "Odontologo"
+        });
+        Assert.IsType<RedirectToActionResult>(result);
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(["Odontologo"], await database.UserManager.GetRolesAsync(stored));
+        Assert.NotEqual(stamp, stored.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Edit_DatosPersonalesSinCambioDeRol_ConservaSecurityStamp()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("sello@example.test", "Recepcionista", "Usuario", "Prueba");
+        var stamp = user.SecurityStamp;
+        var result = await database.CreateController().Edit(user.Id, new UsuarioEditViewModel
+        {
+            Id = user.Id, Email = user.Email!, Nombre = "Nuevo", Apellido = "Apellido", Telefono = "809-555-0101", Rol = "Recepcionista"
+        });
+        Assert.IsType<RedirectToActionResult>(result);
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal("Nuevo", stored.Nombre);
+        Assert.Equal("Apellido", stored.Apellido);
+        Assert.Equal("809-555-0101", stored.PhoneNumber);
+        Assert.Equal(["Recepcionista"], await database.UserManager.GetRolesAsync(stored));
+        Assert.Equal(stamp, stored.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Deactivate_AdministradorInicialRechazado_ConservaSecurityStamp()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("admin@msdentalsys.local", "Administrador", "Administrador", "Sistema");
+        var stamp = user.SecurityStamp;
+        var controller = database.CreateController();
+        Assert.IsType<RedirectToActionResult>(await controller.Deactivate(user.Id));
+        Assert.NotNull(controller.TempData["ErrorMessage"]);
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.True(stored.Estado);
+        Assert.Equal(stamp, stored.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Edit_AdministradorInicialRechazado_ConservaSecurityStamp()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("admin@msdentalsys.local", "Administrador", "Administrador", "Sistema");
+        var stamp = user.SecurityStamp;
+        var controller = database.CreateController();
+        var result = await controller.Edit(user.Id, new UsuarioEditViewModel
+        {
+            Id = user.Id, Email = user.Email!, Nombre = user.Nombre, Apellido = user.Apellido, Rol = "Odontologo"
+        });
+        Assert.IsType<ViewResult>(result);
+        Assert.False(controller.ModelState.IsValid);
+        database.Context.ChangeTracker.Clear();
+        var stored = await database.Context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(["Administrador"], await database.UserManager.GetRolesAsync(stored));
+        Assert.Equal(stamp, stored.SecurityStamp);
+    }
+
     private static UsuarioCreateViewModel CreateModel(string firstName, string lastName, string email, string role)
     {
         return new UsuarioCreateViewModel
