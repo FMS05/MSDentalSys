@@ -15,7 +15,7 @@ using Xunit;
 
 namespace MSDentalSys.Tests.Controllers;
 
-public class CitasControllerTests
+public partial class CitasControllerTests
 {
     [Fact]
     public async Task BuscarPacientes_PorNombre_DevuelvePacienteActivo()
@@ -597,12 +597,16 @@ public class CitasControllerTests
         public string OdontologistId { get; private set; } = string.Empty;
         public int ServiceId { get; private set; }
 
-        public static async Task<TestDatabase> CreateAsync()
+        public ApplicationDbContext CreateIndependentContext() => new(
+            new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options);
+
+        public static async Task<TestDatabase> CreateAsync(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseSqlite(connection)
+                .AddInterceptors(interceptors)
                 .Options;
             var context = new ApplicationDbContext(options);
             await context.Database.EnsureCreatedAsync();

@@ -25,6 +25,12 @@ namespace MSDentalSys.Data.Context
         {
             base.OnModelCreating(builder);
 
+            builder.Entity<Cita>()
+                .HasIndex(c => new { c.OdontologoId, c.FechaHoraInicio })
+                .HasDatabaseName("UX_Citas_Odontologo_FechaHoraInicio_NoCancelada")
+                .IsUnique()
+                .HasFilter("[EstadoCita] <> 'Cancelada'");
+
             // Paciente 1:1 AntecedenteClinico
             builder.Entity<Paciente>()
                 .HasOne(p => p.AntecedenteClinico)

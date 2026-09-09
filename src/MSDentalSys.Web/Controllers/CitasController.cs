@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +15,8 @@ namespace MSDentalSys.Web.Controllers
     [Authorize(Roles = "Administrador,Odontologo,Recepcionista")]
     public class CitasController : Controller
     {
+        private const string ScheduleIndexName = "UX_Citas_Odontologo_FechaHoraInicio_NoCancelada";
+        private const string ScheduleConflictMessage = "Otra operación reservó ese horario para el odontólogo. Selecciona otra fecha u hora y vuelve a intentarlo.";
         private static readonly string[] EstadosPermitidos =
         [
             "Pendiente",
@@ -201,7 +205,21 @@ namespace MSDentalSys.Web.Controllers
                 FechaCreacion = DateTime.Now
             });
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsScheduleConflict(ex.InnerException))
+            {
+                // Evita que la inserción rechazada quede pendiente en este contexto.
+                foreach (var entry in ex.Entries)
+                {
+                    entry.State = EntityState.Detached;
+                }
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), ScheduleConflictMessage);
+                await LoadFormOptionsAsync(model);
+                return View(model);
+            }
             TempData["SuccessMessage"] = "Cita registrada correctamente.";
             return RedirectToAction(nameof(Index));
         }
@@ -266,10 +284,19 @@ namespace MSDentalSys.Web.Controllers
                 return View(model);
             }
 
-            var affected = await _context.Citas
+            int affected;
+            try
+            {
+                affected = await _context.Citas
                 .Where(c => c.CitaId == id && c.EstadoCita == cita.EstadoCita &&
                     c.FechaHoraInicio == cita.FechaHoraInicio)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.FechaHoraInicio, model.FechaHoraInicio));
+            }
+            catch (Exception ex) when (IsScheduleConflict(ex))
+            {
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), ScheduleConflictMessage);
+                return View(model);
+            }
             if (affected != 1)
             {
                 return RedirectConcurrencyConflict(id);
@@ -363,6 +390,20 @@ namespace MSDentalSys.Web.Controllers
             }
             TempData["SuccessMessage"] = message;
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private static bool IsScheduleConflict(Exception? exception)
+        {
+            if (exception is SqlException sql)
+            {
+                return sql.Errors.Cast<SqlError>().Any(error =>
+                    error.Number is 2601 or 2627 &&
+                    error.Message.Contains("'" + ScheduleIndexName + "'", StringComparison.Ordinal));
+            }
+
+            // SQLite informa las columnas del índice UNIQUE, no su nombre.
+            return exception is SqliteException { SqliteErrorCode: 19, SqliteExtendedErrorCode: 2067 } sqlite &&
+                sqlite.Message.Contains("UNIQUE constraint failed: Citas.OdontologoId, Citas.FechaHoraInicio'", StringComparison.Ordinal);
         }
 
         private IActionResult RedirectConcurrencyConflict(int id)

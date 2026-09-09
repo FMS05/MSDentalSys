@@ -338,7 +338,8 @@ public class TratamientosControllerTests
                 PacienteId = PatientId,
                 OdontologoId = OdontologistId,
                 ServicioOdontologicoId = ActiveServiceId,
-                FechaHoraInicio = new DateTime(2030, 1, 15, 9, 0, 0),
+                FechaHoraInicio = new DateTime(2030, 1, 15, 9, 0, 0)
+                    .AddMinutes(15 * await Context.Citas.CountAsync()),
                 EstadoCita = "Atendida"
             };
             Context.Citas.Add(cita);
