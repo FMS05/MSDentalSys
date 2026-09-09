@@ -124,7 +124,7 @@ public class AtencionesControllerTests
 
         Assert.IsType<RedirectToActionResult>(result);
         var atencion = await database.Context.AtencionesOdontologicas.SingleAsync();
-        var storedAppointment = await database.Context.Citas.SingleAsync();
+        var storedAppointment = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(cita.CitaId, atencion.CitaId);
         Assert.Equal(database.PatientId, atencion.PacienteId);
         Assert.Equal(database.OdontologistId, atencion.OdontologoId);
@@ -150,7 +150,7 @@ public class AtencionesControllerTests
 
         Assert.IsType<ViewResult>(result);
         Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
-        Assert.Equal(status, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(status, (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]

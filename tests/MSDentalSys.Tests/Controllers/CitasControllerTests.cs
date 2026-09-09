@@ -203,7 +203,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        var cita = await database.Context.Citas.SingleAsync();
+        var cita = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(database.PatientId, cita.PacienteId);
         Assert.Equal(database.OdontologistId, cita.OdontologoId);
         Assert.Equal(database.ServiceId, cita.ServicioOdontologicoId);
@@ -332,7 +332,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        var stored = await database.Context.Citas.SingleAsync();
+        var stored = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(newStart, stored.FechaHoraInicio);
         Assert.Equal(database.PatientId, stored.PacienteId);
         Assert.Equal(database.OdontologistId, stored.OdontologoId);
@@ -363,7 +363,7 @@ public class CitasControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Single(controller.ModelState[nameof(ReagendarCitaViewModel.FechaHoraInicio)]!.Errors);
         Assert.Contains("otra cita", controller.ModelState[nameof(ReagendarCitaViewModel.FechaHoraInicio)]!.Errors[0].ErrorMessage, StringComparison.OrdinalIgnoreCase);
-        var stored = await database.Context.Citas.SingleAsync(c => c.CitaId == first.CitaId);
+        var stored = await database.Context.Citas.AsNoTracking().SingleAsync(c => c.CitaId == first.CitaId);
         Assert.Equal(originalStart, stored.FechaHoraInicio);
     }
 
@@ -384,7 +384,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Cancelada", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Cancelada", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("cancelada", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -405,7 +405,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Atendida", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Atendida", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("atendida", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -428,7 +428,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(originalStatus, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(originalStatus, (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -452,7 +452,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Pendiente", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Pendiente", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -473,7 +473,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("No asistió", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]
@@ -540,7 +540,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("No asistió", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]
@@ -560,7 +560,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<ForbidResult>(result);
-        Assert.Equal("Confirmada", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Confirmada", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Theory]

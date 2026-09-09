@@ -106,6 +106,7 @@ public class TratamientosController : Controller
     public async Task<IActionResult> UpdateStatus(int id, string estado)
     {
         var tratamiento = await _context.Tratamientos
+            .AsNoTracking()
             .Include(t => t.AtencionOdontologica)
             .SingleOrDefaultAsync(t => t.TratamientoId == id);
 
@@ -137,8 +138,14 @@ public class TratamientosController : Controller
             return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
         }
 
-        tratamiento.EstadoTratamiento = estado;
-        await _context.SaveChangesAsync();
+        var affected = await _context.Tratamientos
+            .Where(t => t.TratamientoId == id && t.EstadoTratamiento == tratamiento.EstadoTratamiento)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.EstadoTratamiento, estado));
+        if (affected != 1)
+        {
+            TempData["ErrorMessage"] = "Otra operación modificó este tratamiento mientras intentabas actualizarlo. Revisa los datos actuales y vuelve a intentarlo.";
+            return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
+        }
         TempData["SuccessMessage"] = "Estado del tratamiento actualizado correctamente.";
         return RedirectToAction("Details", "Atenciones", new { id = tratamiento.AtencionOdontologicaId });
     }

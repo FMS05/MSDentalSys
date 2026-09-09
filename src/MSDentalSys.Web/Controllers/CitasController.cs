@@ -243,7 +243,7 @@ namespace MSDentalSys.Web.Controllers
                 return NotFound();
             }
 
-            var cita = await _context.Citas.FirstOrDefaultAsync(c => c.CitaId == id);
+            var cita = await _context.Citas.AsNoTracking().FirstOrDefaultAsync(c => c.CitaId == id);
 
             if (cita is null)
             {
@@ -266,8 +266,14 @@ namespace MSDentalSys.Web.Controllers
                 return View(model);
             }
 
-            cita.FechaHoraInicio = model.FechaHoraInicio;
-            await _context.SaveChangesAsync();
+            var affected = await _context.Citas
+                .Where(c => c.CitaId == id && c.EstadoCita == cita.EstadoCita &&
+                    c.FechaHoraInicio == cita.FechaHoraInicio)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.FechaHoraInicio, model.FechaHoraInicio));
+            if (affected != 1)
+            {
+                return RedirectConcurrencyConflict(id);
+            }
 
             TempData["SuccessMessage"] = "Cita reagendada correctamente.";
             return RedirectToAction(nameof(Details), new { id });
@@ -293,7 +299,7 @@ namespace MSDentalSys.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateStatus(int id, ActualizarEstadoCitaViewModel model)
         {
-            var cita = await _context.Citas.FindAsync(id);
+            var cita = await _context.Citas.AsNoTracking().SingleOrDefaultAsync(c => c.CitaId == id);
 
             if (cita is null)
             {
@@ -331,12 +337,12 @@ namespace MSDentalSys.Web.Controllers
                 }
             }
 
-            return await ChangeStatusAsync(id, model.EstadoCita, "Estado de la cita actualizado correctamente.");
+            return await ChangeStatusAsync(id, model.EstadoCita, "Estado de la cita actualizado correctamente.", cita);
         }
 
-        private async Task<IActionResult> ChangeStatusAsync(int id, string status, string message)
+        private async Task<IActionResult> ChangeStatusAsync(int id, string status, string message, Cita? cita = null)
         {
-            var cita = await _context.Citas.FindAsync(id);
+            cita ??= await _context.Citas.AsNoTracking().SingleOrDefaultAsync(c => c.CitaId == id);
 
             if (cita is null)
             {
@@ -348,9 +354,20 @@ namespace MSDentalSys.Web.Controllers
                 return RedirectFinalAppointment(cita.EstadoCita, id);
             }
 
-            cita.EstadoCita = status;
-            await _context.SaveChangesAsync();
+            var affected = await _context.Citas
+                .Where(c => c.CitaId == id && c.EstadoCita == cita.EstadoCita)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.EstadoCita, status));
+            if (affected != 1)
+            {
+                return RedirectConcurrencyConflict(id);
+            }
             TempData["SuccessMessage"] = message;
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private IActionResult RedirectConcurrencyConflict(int id)
+        {
+            TempData["ErrorMessage"] = "Otra operación modificó esta cita mientras intentabas actualizarla. Revisa los datos actuales y vuelve a intentarlo.";
             return RedirectToAction(nameof(Details), new { id });
         }
 
