@@ -13,6 +13,161 @@ namespace MSDentalSys.Tests.Controllers;
 
 public class PacientesControllerTests
 {
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, -1)]
+    [InlineData(true, -1)]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 366)]
+    [InlineData(true, 366)]
+    public async Task FechaNacimiento_CreateYEdit_RechazanSoloFechasFuturas(bool edit, int? days)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var originalDate = DateTime.Today.AddYears(-10);
+        var original = new Paciente
+        {
+            Nombre = "Original", Apellido = "Prueba", FechaNacimiento = originalDate,
+            Sexo = "Femenino", AntecedenteClinico = new AntecedenteClinico { Embarazo = false }
+        };
+        if (edit)
+        {
+            database.Context.Pacientes.Add(original);
+            await database.Context.SaveChangesAsync();
+            database.Context.ChangeTracker.Clear();
+        }
+        var model = new PacienteFormViewModel
+        {
+            PacienteId = original.PacienteId, Nombre = "Nuevo", Apellido = "Prueba",
+            FechaNacimiento = days.HasValue ? DateTime.Today.AddDays(days.Value) : null,
+            Sexo = "Femenino", Embarazo = true, TieneSeguro = false, Cedula = null
+        };
+        var controller = database.CreateController();
+        // Las reglas H5 son manuales: se verifica que el propio controlador agregue los errores.
+        Assert.True(controller.ModelState.IsValid);
+        var result = edit ? await controller.Edit(original.PacienteId, model) : await controller.Create(model);
+        var stored = await database.Context.Pacientes.AsNoTracking().Include(p => p.AntecedenteClinico).SingleOrDefaultAsync();
+        if (days > 0)
+        {
+            Assert.Same(model, Assert.IsType<ViewResult>(result).Model);
+            Assert.Contains(controller.ModelState[nameof(model.FechaNacimiento)]!.Errors,
+                e => e.ErrorMessage.Contains("no puede ser posterior"));
+            Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+            if (edit)
+            {
+                Assert.Equal(originalDate, stored!.FechaNacimiento);
+                Assert.Equal("Original", stored.Nombre);
+                Assert.False(stored.AntecedenteClinico!.Embarazo);
+            }
+            else Assert.Null(stored);
+        }
+        else
+        {
+            Assert.IsType<RedirectToActionResult>(result);
+            Assert.Equal(model.FechaNacimiento, stored!.FechaNacimiento);
+            Assert.Null(stored.Cedula);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, "OtroValor")]
+    [InlineData(true, "OtroValor")]
+    [InlineData(false, "Administrador")]
+    [InlineData(true, "Administrador")]
+    [InlineData(false, "femenino")]
+    [InlineData(true, "femenino")]
+    [InlineData(false, "MASCULINO")]
+    [InlineData(true, "MASCULINO")]
+    [InlineData(false, " Femenino ")]
+    [InlineData(true, " Femenino ")]
+    public async Task SexoNoCanonico_CreateYEdit_NoPersistenPacienteNiEmbarazo(bool edit, string sexo)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var original = new Paciente
+        {
+            Nombre = "Original", Apellido = "Prueba", Sexo = "Femenino",
+            AntecedenteClinico = new AntecedenteClinico { Embarazo = false }
+        };
+        if (edit)
+        {
+            database.Context.Pacientes.Add(original);
+            await database.Context.SaveChangesAsync();
+            database.Context.ChangeTracker.Clear();
+        }
+        var controller = database.CreateController();
+        var model = new PacienteFormViewModel
+        {
+            PacienteId = original.PacienteId, Nombre = "Nuevo", Apellido = "Prueba",
+            Sexo = sexo, Embarazo = true, TieneSeguro = false
+        };
+        var result = edit ? await controller.Edit(original.PacienteId, model) : await controller.Create(model);
+        Assert.Same(model, Assert.IsType<ViewResult>(result).Model);
+        Assert.Contains(controller.ModelState[nameof(model.Sexo)]!.Errors,
+            e => e.ErrorMessage == "Seleccione un sexo válido.");
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        var stored = await database.Context.Pacientes.AsNoTracking().Include(p => p.AntecedenteClinico).SingleOrDefaultAsync();
+        if (edit)
+        {
+            Assert.Equal("Original", stored!.Nombre);
+            Assert.Equal("Femenino", stored.Sexo);
+            Assert.False(stored.AntecedenteClinico!.Embarazo);
+        }
+        else
+        {
+            Assert.Null(stored);
+            Assert.Empty(await database.Context.AntecedentesClinicos.AsNoTracking().ToListAsync());
+        }
+    }
+
+    [Theory]
+    [InlineData(false, "Femenino", true)]
+    [InlineData(true, "Femenino", true)]
+    [InlineData(false, "Femenino", false)]
+    [InlineData(true, "Femenino", false)]
+    [InlineData(false, "Femenino", null)]
+    [InlineData(true, "Femenino", null)]
+    [InlineData(false, "Masculino", true)]
+    [InlineData(true, "Masculino", true)]
+    [InlineData(false, "Otro", true)]
+    [InlineData(true, "Otro", true)]
+    [InlineData(false, null, true)]
+    [InlineData(true, null, true)]
+    [InlineData(false, "", true)]
+    [InlineData(true, "", true)]
+    [InlineData(false, "   ", true)]
+    [InlineData(true, "   ", true)]
+    public async Task SexoValidoUOpcional_CreateYEdit_ConservanReglaEmbarazo(bool edit, string? sexo, bool? embarazo)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var original = new Paciente
+        {
+            Nombre = "Original", Apellido = "Prueba", Sexo = "Femenino",
+            AntecedenteClinico = new AntecedenteClinico { Embarazo = true }
+        };
+        if (edit)
+        {
+            database.Context.Pacientes.Add(original);
+            await database.Context.SaveChangesAsync();
+            database.Context.ChangeTracker.Clear();
+        }
+        var model = new PacienteFormViewModel
+        {
+            PacienteId = original.PacienteId, Nombre = "Paciente", Apellido = "Prueba",
+            Sexo = sexo, Embarazo = embarazo, FechaNacimiento = null, TieneSeguro = false
+        };
+        var controller = database.CreateController();
+        var result = edit ? await controller.Edit(original.PacienteId, model) : await controller.Create(model);
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True(controller.ModelState.IsValid);
+        var stored = await database.Context.Pacientes.AsNoTracking().Include(p => p.AntecedenteClinico).SingleAsync();
+        Assert.Equal(string.IsNullOrWhiteSpace(sexo) ? null : sexo, stored.Sexo);
+        Assert.Equal(sexo == "Femenino" ? embarazo : null, stored.AntecedenteClinico!.Embarazo);
+        Assert.Null(stored.FechaNacimiento);
+    }
+
     [Fact]
     public async Task Create_Cumple18MananaSinCedula_EsValido()
     {
@@ -231,7 +386,7 @@ public class PacientesControllerTests
             Apellido = "Paciente",
             Cedula = "001-0000001-1",
             FechaNacimiento = new DateTime(1990, 1, 2),
-            Sexo = "F",
+            Sexo = "Femenino",
             Telefono = "809-555-0101",
             Correo = "test.paciente@example.test",
             Alergias = "Ninguna",
@@ -251,7 +406,7 @@ public class PacientesControllerTests
         Assert.Equal("Paciente", paciente.Apellido);
         Assert.Equal("001-0000001-1", paciente.Cedula);
         Assert.Equal(new DateTime(1990, 1, 2), paciente.FechaNacimiento);
-        Assert.Equal("F", paciente.Sexo);
+        Assert.Equal("Femenino", paciente.Sexo);
         Assert.Equal("809-555-0101", paciente.Telefono);
         Assert.Equal("test.paciente@example.test", paciente.Correo);
         Assert.True(paciente.Estado);
