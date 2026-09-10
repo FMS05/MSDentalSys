@@ -79,15 +79,16 @@ namespace MSDentalSys.Web.Controllers
                 ModelState.AddModelError(nameof(model.Rol), "El rol seleccionado no es válido.");
             }
 
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
             var normalizedEmail = model.Email.Trim();
             if (!string.IsNullOrWhiteSpace(normalizedEmail) &&
                 await _userManager.FindByEmailAsync(normalizedEmail) is not null)
             {
                 ModelState.AddModelError(nameof(model.Email), "Ya existe un usuario con ese correo electrónico.");
-            }
-
-            if (!ModelState.IsValid)
-            {
                 return View(model);
             }
 

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,59 @@ namespace MSDentalSys.Tests.Controllers;
 public class UsuariosControllerTests
 {
     private const string Password = "Test1234!";
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("correo-invalido")]
+    public async Task Create_EmailInvalidoConModelStateValidado_DevuelveVistaSinCrearUsuario(string? email)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+        var model = CreateModel("Usuario", "Prueba", email!, "Odontologo");
+        ValidateCreateModel(controller, model);
+        Assert.False(controller.ModelState.IsValid);
+
+        var result = await controller.Create(model);
+
+        Assert.Same(model, Assert.IsType<ViewResult>(result).Model);
+        Assert.NotEmpty(controller.ModelState[nameof(model.Email)]!.Errors);
+        Assert.Empty(await database.Context.Users.ToListAsync());
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+    }
+
+    [Fact]
+    public async Task Create_EmailConEspaciosExternos_NormalizaEmailYUserName()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+        var model = CreateModel("Usuario", "Prueba", " usuario@correo.com ", "Odontologo");
+        ValidateCreateModel(controller, model);
+        Assert.True(controller.ModelState.IsValid);
+
+        var result = await controller.Create(model);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var user = await database.Context.Users.SingleAsync();
+        Assert.Equal("usuario@correo.com", user.Email);
+        Assert.Equal("usuario@correo.com", user.UserName);
+        Assert.Equal(new[] { "Odontologo" }, await database.UserManager.GetRolesAsync(user));
+    }
+
+    private static void ValidateCreateModel(UsuariosController controller, UsuarioCreateViewModel model)
+    {
+        // Las llamadas directas no ejecutan DataAnnotations; trasladamos sus errores a ModelState.
+        var errors = new List<ValidationResult>();
+        Validator.TryValidateObject(model, new ValidationContext(model), errors, validateAllProperties: true);
+        foreach (var error in errors)
+        {
+            foreach (var member in error.MemberNames.DefaultIfEmpty(string.Empty))
+            {
+                controller.ModelState.AddModelError(member, error.ErrorMessage!);
+            }
+        }
+    }
 
     [Fact]
     public async Task Create_OdontologoValido_CreaUsuarioYAsignaRol()
