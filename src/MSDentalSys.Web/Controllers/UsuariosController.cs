@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MSDentalSys.Data.Context;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Models.ViewModels;
 
@@ -15,10 +16,12 @@ namespace MSDentalSys.Web.Controllers
         private static readonly string[] RolesGestionables = ["Odontologo", "Recepcionista"];
 
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
 
-        public UsuariosController(UserManager<ApplicationUser> userManager)
+        public UsuariosController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
         {
             _userManager = userManager;
+            _context = context;
         }
 
         [HttpGet]
@@ -103,20 +106,43 @@ namespace MSDentalSys.Web.Controllers
                 FechaCreacion = DateTime.Now
             };
 
-            var createResult = await _userManager.CreateAsync(user, model.Password);
-
-            if (!createResult.Succeeded)
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var committed = false;
+            try
             {
-                AddIdentityErrors(createResult, nameof(model.Password));
-                return View(model);
+                var createResult = await _userManager.CreateAsync(user, model.Password);
+
+                if (!createResult.Succeeded)
+                {
+                    AddIdentityErrors(createResult, nameof(model.Password));
+                    return View(model);
+                }
+
+                var roleResult = await _userManager.AddToRoleAsync(user, model.Rol);
+
+                if (!roleResult.Succeeded)
+                {
+                    AddIdentityErrors(roleResult, nameof(model.Rol));
+                    return View(model);
+                }
+
+                await transaction.CommitAsync();
+                committed = true;
             }
-
-            var roleResult = await _userManager.AddToRoleAsync(user, model.Rol);
-
-            if (!roleResult.Succeeded)
+            finally
             {
-                AddIdentityErrors(roleResult, nameof(model.Rol));
-                return View(model);
+                if (!committed)
+                {
+                    try
+                    {
+                        await transaction.RollbackAsync();
+                    }
+                    finally
+                    {
+                        // El rollback no restaura las entidades ni las asociaciones rastreadas.
+                        _context.ChangeTracker.Clear();
+                    }
+                }
             }
 
             TempData["SuccessMessage"] = "Usuario registrado correctamente.";
@@ -212,51 +238,78 @@ namespace MSDentalSys.Web.Controllers
                 return View(model);
             }
 
+            // Estos datos no se editan: conservar los valores leídos antes de modificar al usuario.
+            model.Email = user.Email ?? user.UserName ?? string.Empty;
+            model.EsAdministradorInicial = isProtectedAdmin;
+
             user.Nombre = model.Nombre.Trim();
             user.Apellido = model.Apellido.Trim();
             user.PhoneNumber = NullIfWhiteSpace(model.Telefono);
 
-            var updateResult = await _userManager.UpdateAsync(user);
-            if (!updateResult.Succeeded)
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var committed = false;
+            try
             {
-                AddIdentityErrors(updateResult);
-                return View(model);
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    AddIdentityErrors(updateResult);
+                    return View(model);
+                }
+
+                if (!isProtectedAdmin)
+                {
+                    var rolesToRemove = currentRoles
+                        .Where(role => RolesGestionables.Contains(role) && role != model.Rol)
+                        .ToList();
+                    var roleChanged = !currentRoles.Contains(model.Rol) || rolesToRemove.Count > 0;
+
+                    if (!currentRoles.Contains(model.Rol))
+                    {
+                        var addResult = await _userManager.AddToRoleAsync(user, model.Rol);
+                        if (!addResult.Succeeded)
+                        {
+                            AddIdentityErrors(addResult, nameof(model.Rol));
+                            return View(model);
+                        }
+                    }
+
+                    if (rolesToRemove.Count > 0)
+                    {
+                        var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                        if (!removeResult.Succeeded)
+                        {
+                            AddIdentityErrors(removeResult, nameof(model.Rol));
+                            return View(model);
+                        }
+                    }
+
+                    if (roleChanged)
+                    {
+                        var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+                        if (!stampResult.Succeeded)
+                        {
+                            AddIdentityErrors(stampResult);
+                            return View(model);
+                        }
+                    }
+                }
+
+                await transaction.CommitAsync();
+                committed = true;
             }
-
-            if (!isProtectedAdmin)
+            finally
             {
-                var rolesToRemove = currentRoles
-                    .Where(role => RolesGestionables.Contains(role) && role != model.Rol)
-                    .ToList();
-                var roleChanged = !currentRoles.Contains(model.Rol) || rolesToRemove.Count > 0;
-
-                if (!currentRoles.Contains(model.Rol))
+                if (!committed)
                 {
-                    var addResult = await _userManager.AddToRoleAsync(user, model.Rol);
-                    if (!addResult.Succeeded)
+                    try
                     {
-                        AddIdentityErrors(addResult, nameof(model.Rol));
-                        return View(model);
+                        await transaction.RollbackAsync();
                     }
-                }
-
-                if (rolesToRemove.Count > 0)
-                {
-                    var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-                    if (!removeResult.Succeeded)
+                    finally
                     {
-                        AddIdentityErrors(removeResult, nameof(model.Rol));
-                        return View(model);
-                    }
-                }
-
-                if (roleChanged)
-                {
-                    var stampResult = await _userManager.UpdateSecurityStampAsync(user);
-                    if (!stampResult.Succeeded)
-                    {
-                        AddIdentityErrors(stampResult);
-                        return View(model);
+                        // El rollback no restaura las entidades ni las asociaciones rastreadas.
+                        _context.ChangeTracker.Clear();
                     }
                 }
             }

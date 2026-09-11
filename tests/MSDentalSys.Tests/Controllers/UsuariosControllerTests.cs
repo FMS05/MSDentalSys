@@ -380,6 +380,194 @@ public class UsuariosControllerTests
         Assert.Equal(stamp, stored.SecurityStamp);
     }
 
+    [Fact]
+    public async Task Create_Commit_PersisteUsuarioYRolEnContextoNuevo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+        Assert.IsType<RedirectToActionResult>(await controller.Create(
+            CreateModel("Nuevo", "Usuario", "commit@example.test", "Odontologo")));
+
+        await using var fresh = database.CreateFreshContext();
+        var user = await fresh.Users.SingleAsync();
+        Assert.True(user.Estado);
+        var role = await fresh.Roles.SingleAsync(r => r.Name == "Odontologo");
+        Assert.Equal(role.Id, (await fresh.UserRoles.SingleAsync()).RoleId);
+        Assert.Equal(user.Id, (await fresh.UserRoles.SingleAsync()).UserId);
+        Assert.NotNull(controller.TempData["SuccessMessage"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Create_AddFalla_RevierteUsuarioYAsociaciones(bool throws)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var reached = false;
+        database.ControlledManager.BeforeOperation = async operation =>
+        {
+            if (operation != "Add") return;
+            reached = true;
+            Assert.NotNull(database.Context.Database.CurrentTransaction);
+            Assert.Single(await database.Context.Users.AsNoTracking().ToListAsync());
+        };
+        database.ControlledManager.FailingOperation = "Add";
+        database.ControlledManager.ThrowFailure = throws;
+        var controller = database.CreateController();
+        var model = CreateModel("Nuevo", "Usuario", "rollback@example.test", "Odontologo");
+
+        if (throws)
+            Assert.Same(database.ControlledManager.FailureException,
+                await Assert.ThrowsAsync<InvalidOperationException>(() => controller.Create(model)));
+        else
+        {
+            Assert.Same(model, Assert.IsType<ViewResult>(await controller.Create(model)).Model);
+            Assert.Single(controller.ModelState[nameof(model.Rol)]!.Errors);
+        }
+
+        Assert.True(reached);
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        Assert.Empty(database.Context.ChangeTracker.Entries());
+        await using var fresh = database.CreateFreshContext();
+        Assert.Empty(await fresh.Users.ToListAsync());
+        Assert.Empty(await fresh.UserRoles.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_RolPermitidoAusente_RevierteCreacionTrasExcepcionReal()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var role = await database.Context.Roles.SingleAsync(r => r.Name == "Odontologo");
+        database.Context.Roles.Remove(role);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => controller.Create(
+            CreateModel("Nuevo", "Usuario", "ausente@example.test", "Odontologo")));
+
+        await using var fresh = database.CreateFreshContext();
+        Assert.Empty(await fresh.Users.ToListAsync());
+        Assert.Empty(await fresh.UserRoles.ToListAsync());
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+    }
+
+    [Fact]
+    public async Task Create_PasswordRechazado_RevierteYConservaKeyActual()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var model = CreateModel("Nuevo", "Usuario", "password@example.test", "Odontologo");
+        model.Password = "x";
+        var controller = database.CreateController();
+        Assert.IsType<ViewResult>(await controller.Create(model));
+        Assert.NotEmpty(controller.ModelState[nameof(model.Password)]!.Errors);
+        await using var fresh = database.CreateFreshContext();
+        Assert.Empty(await fresh.Users.ToListAsync());
+        Assert.Empty(await fresh.UserRoles.ToListAsync());
+        Assert.Null(database.Context.Database.CurrentTransaction);
+    }
+
+    [Fact]
+    public async Task Edit_Commit_PersisteDatosRolYStampEnContextoNuevo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("commit@example.test", "Odontologo", "Antes", "Original");
+        var stamp = user.SecurityStamp;
+        var operations = new List<string>();
+        database.ControlledManager.BeforeOperation = operation =>
+        {
+            Assert.NotNull(database.Context.Database.CurrentTransaction);
+            operations.Add(operation);
+            return Task.CompletedTask;
+        };
+        var controller = database.CreateController();
+        Assert.IsType<RedirectToActionResult>(await controller.Edit(user.Id, EditModel(user)));
+
+        Assert.Equal(new[] { "Update", "Add", "Remove", "Stamp" }, operations);
+        await using var fresh = database.CreateFreshContext();
+        var stored = await fresh.Users.SingleAsync();
+        Assert.Equal("Nuevo", stored.Nombre);
+        Assert.Equal("Editado", stored.Apellido);
+        Assert.Equal("809-555-0199", stored.PhoneNumber);
+        Assert.NotEqual(stamp, stored.SecurityStamp);
+        Assert.Equal("Recepcionista", await (from ur in fresh.UserRoles
+            join role in fresh.Roles on ur.RoleId equals role.Id select role.Name).SingleAsync());
+        Assert.NotNull(controller.TempData["SuccessMessage"]);
+    }
+
+    [Theory]
+    [InlineData("Update", false)]
+    [InlineData("Add", false)]
+    [InlineData("Remove", false)]
+    [InlineData("Stamp", false)]
+    [InlineData("Add", true)]
+    [InlineData("Remove", true)]
+    [InlineData("Stamp", true)]
+    public async Task Edit_FalloIntermedio_RevierteDatosRolesYStamp(string failingOperation, bool throws)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("rollback@example.test", "Odontologo", "Antes", "Original");
+        var stamp = user.SecurityStamp;
+        var concurrencyStamp = user.ConcurrencyStamp;
+        var reached = false;
+        database.ControlledManager.FailingOperation = failingOperation;
+        database.ControlledManager.ThrowFailure = throws;
+        database.ControlledManager.BeforeOperation = async operation =>
+        {
+            if (operation != failingOperation) return;
+            reached = true;
+            Assert.NotNull(database.Context.Database.CurrentTransaction);
+            var stored = await database.Context.Users.AsNoTracking().SingleAsync();
+            Assert.Equal(operation == "Update" ? "Antes" : "Nuevo", stored.Nombre);
+            var roles = await (from ur in database.Context.UserRoles
+                join role in database.Context.Roles on ur.RoleId equals role.Id
+                orderby role.Name select role.Name).ToListAsync();
+            Assert.Equal(operation switch
+            {
+                "Remove" => new[] { "Odontologo", "Recepcionista" },
+                "Stamp" => new[] { "Recepcionista" },
+                _ => new[] { "Odontologo" }
+            }, roles);
+        };
+        var controller = database.CreateController();
+        var model = EditModel(user);
+        model.Email = "manipulado@example.test";
+        model.EsAdministradorInicial = true;
+
+        if (throws)
+            Assert.Same(database.ControlledManager.FailureException,
+                await Assert.ThrowsAsync<InvalidOperationException>(() => controller.Edit(user.Id, model)));
+        else
+        {
+            Assert.Same(model, Assert.IsType<ViewResult>(await controller.Edit(user.Id, model)).Model);
+            Assert.Equal(user.Email, model.Email);
+            Assert.False(model.EsAdministradorInicial);
+            Assert.Equal("Nuevo", model.Nombre);
+            Assert.Equal("Recepcionista", model.Rol);
+            var key = failingOperation is "Add" or "Remove" ? nameof(model.Rol) : string.Empty;
+            Assert.Single(controller.ModelState[key]!.Errors);
+        }
+
+        Assert.True(reached);
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        Assert.Empty(database.Context.ChangeTracker.Entries());
+        await using var fresh = database.CreateFreshContext();
+        var original = await fresh.Users.SingleAsync();
+        Assert.Equal("Antes", original.Nombre);
+        Assert.Equal("Original", original.Apellido);
+        Assert.Null(original.PhoneNumber);
+        Assert.True(original.Estado);
+        Assert.Equal(stamp, original.SecurityStamp);
+        Assert.Equal(concurrencyStamp, original.ConcurrencyStamp);
+        Assert.Equal("Odontologo", await (from ur in fresh.UserRoles
+            join role in fresh.Roles on ur.RoleId equals role.Id select role.Name).SingleAsync());
+    }
+
+    private static UsuarioEditViewModel EditModel(ApplicationUser user) => new()
+    {
+        Id = user.Id, Email = user.Email!, Nombre = "Nuevo", Apellido = "Editado",
+        Telefono = "809-555-0199", Rol = "Recepcionista"
+    };
+
     private static UsuarioCreateViewModel CreateModel(string firstName, string lastName, string email, string role)
     {
         return new UsuarioCreateViewModel
@@ -408,6 +596,9 @@ public class UsuariosControllerTests
 
         public ApplicationDbContext Context { get; }
         public UserManager<ApplicationUser> UserManager => _services.GetRequiredService<UserManager<ApplicationUser>>();
+        public ControlledUserManager ControlledManager => (ControlledUserManager)UserManager;
+        public ApplicationDbContext CreateFreshContext() => new(
+            new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options);
         private RoleManager<IdentityRole> RoleManager => _services.GetRequiredService<RoleManager<IdentityRole>>();
 
         public static async Task<TestDatabase> CreateAsync()
@@ -433,6 +624,7 @@ public class UsuariosControllerTests
                 })
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddUserManager<ControlledUserManager>()
                 .Services
                 .BuildServiceProvider();
 
@@ -475,7 +667,7 @@ public class UsuariosControllerTests
         public UsuariosController CreateController()
         {
             var httpContext = new DefaultHttpContext();
-            var controller = new UsuariosController(UserManager)
+            var controller = new UsuariosController(UserManager, Context)
             {
                 ControllerContext = new ControllerContext
                 {
@@ -506,6 +698,46 @@ public class UsuariosControllerTests
                 }
             }
         }
+    }
+
+    private sealed class ControlledUserManager : UserManager<ApplicationUser>
+    {
+        public ControlledUserManager(IServiceProvider services) : base(
+            services.GetRequiredService<IUserStore<ApplicationUser>>(),
+            services.GetRequiredService<Microsoft.Extensions.Options.IOptions<IdentityOptions>>(),
+            services.GetRequiredService<IPasswordHasher<ApplicationUser>>(),
+            services.GetServices<IUserValidator<ApplicationUser>>(),
+            services.GetServices<IPasswordValidator<ApplicationUser>>(),
+            services.GetRequiredService<ILookupNormalizer>(),
+            services.GetRequiredService<IdentityErrorDescriber>(), services,
+            services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<UserManager<ApplicationUser>>>())
+        {
+        }
+
+        public string? FailingOperation { get; set; }
+        public bool ThrowFailure { get; set; }
+        public InvalidOperationException FailureException { get; } = new("Fallo controlado H7.");
+        public Func<string, Task>? BeforeOperation { get; set; }
+
+        private async Task<IdentityResult> ExecuteAsync(string operation, Func<Task<IdentityResult>> action)
+        {
+            if (BeforeOperation is not null) await BeforeOperation(operation);
+            if (FailingOperation == operation)
+            {
+                if (ThrowFailure) throw FailureException;
+                return IdentityResult.Failed(new IdentityError { Code = "H7", Description = "Fallo controlado H7." });
+            }
+            return await action();
+        }
+
+        public override Task<IdentityResult> UpdateAsync(ApplicationUser user) =>
+            ExecuteAsync("Update", () => base.UpdateAsync(user));
+        public override Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role) =>
+            ExecuteAsync("Add", () => base.AddToRoleAsync(user, role));
+        public override Task<IdentityResult> RemoveFromRolesAsync(ApplicationUser user, IEnumerable<string> roles) =>
+            ExecuteAsync("Remove", () => base.RemoveFromRolesAsync(user, roles));
+        public override Task<IdentityResult> UpdateSecurityStampAsync(ApplicationUser user) =>
+            ExecuteAsync("Stamp", () => base.UpdateSecurityStampAsync(user));
     }
 
     private sealed class RecordingTempDataProvider : ITempDataProvider
