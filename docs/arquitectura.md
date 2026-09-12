@@ -218,7 +218,7 @@ ServicioOdontologico tiene una relación 1:N con SubservicioOdontologico. Cada p
 
 Cita conserva ServicioOdontologicoId y agrega SubservicioOdontologicoId y DuracionProgramadaMinutos nullable, sin valores por defecto ni backfill. Una FK compuesta garantiza la pertenencia del subservicio al servicio; las eliminaciones son Restrict. Los CHECK validan duraciones y el índice único (ServicioOdontologicoId, Nombre) incluye inactivos. Las comparaciones de nombres conservan la collation del proveedor y Trim del formulario.
 
-En Fase A estas columnas prepararon el esquema y permitieron citas sin subservicio ni duración. La duración del servicio principal permanece sin cambios por compatibilidad. Tratamiento continúa asociado al servicio principal.
+En Fase A estas columnas prepararon el esquema y permitieron citas sin subservicio ni duración. ServicioOdontologico es el agrupador; su duración permanece como propiedad/columna legacy por compatibilidad, sin binding en ServicioFormViewModel ni visualización o edición en Servicios. Edit conserva el valor histórico y Create deja el campo legacy nulo. La duración operativa pertenece al procedimiento SubservicioOdontologico y se copia al snapshot de Cita al crearla. Tratamiento continúa asociado al servicio principal.
 
 ### Integración de citas — Fase B
 

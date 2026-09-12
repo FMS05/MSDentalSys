@@ -109,7 +109,7 @@ Los estados utilizados son `Pendiente`, `Confirmada`, `Atendida`, `Cancelada` y 
 ### Servicios
 
 - Los servicios pueden activarse y desactivarse lógicamente.
-- Cada servicio puede registrar una duración estimada en minutos.
+- El servicio principal agrupa procedimientos y administra nombre/descripción. La duración se configura en cada subservicio y se copia como snapshot al crear la cita; la columna de duración del servicio se conserva únicamente como legacy, sin edición en la interfaz.
 
 ### Atención odontológica
 
@@ -239,4 +239,4 @@ Desde el detalle de un servicio se consulta su catálogo de procedimientos. Solo
 
 El catálogo inicial contiene 45 procedimientos y se carga explícitamente desde Subservicios, después de aplicar la migración y preparar los 10 servicios padre activos con los nombres del catálogo. No se carga automáticamente al arrancar. Sus duraciones son parámetros operativos del sistema, no información oficial clínica. La carga conserva ediciones e inactivos y reconoce renombrados mediante un código técnico estable.
 
-Cita tiene dos columnas nullable (SubservicioOdontologicoId y DuracionProgramadaMinutos), sin completar datos históricos. Desde Fase B, las nuevas citas requieren un subservicio activo del servicio activo seleccionado; su duración se copia desde BD como snapshot. Reagendar conserva servicio, subservicio y snapshot aunque cambie el catálogo. Details muestra «No registrado» para datos históricos nulos. H8 permanece pendiente y H3/H4 se conservan. La duración del servicio principal y el flujo de tratamientos no cambian. No existe componente económico.
+Cita tiene dos columnas nullable (SubservicioOdontologicoId y DuracionProgramadaMinutos), sin completar datos históricos. Desde Fase B, las nuevas citas requieren un subservicio activo del servicio activo seleccionado; su duración se copia desde BD como snapshot. Reagendar conserva servicio, subservicio y snapshot aunque cambie el catálogo. Details muestra «No registrado» para datos históricos nulos. H8 permanece pendiente y H3/H4 se conservan. La duración del servicio principal permanece como legacy en entidad/BD y no se administra ni muestra en Servicios. El flujo de tratamientos no cambia. No existe componente económico.

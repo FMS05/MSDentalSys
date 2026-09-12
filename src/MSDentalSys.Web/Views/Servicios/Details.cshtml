@@ -37,7 +37,6 @@
         </div>
         <dl class="service-detail-grid">
             <div><dt>Descripción</dt><dd>@(Model.Descripcion ?? "Sin descripción")</dd></div>
-            <div><dt>Duración estimada</dt><dd>@(Model.DuracionEstimadaMinutos.HasValue ? $"{Model.DuracionEstimadaMinutos} minutos" : "No especificada")</dd></div>
             <div><dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
             <div><dt>Estado</dt><dd>@(Model.Estado ? "Activo" : "Inactivo")</dd></div>
         </dl>

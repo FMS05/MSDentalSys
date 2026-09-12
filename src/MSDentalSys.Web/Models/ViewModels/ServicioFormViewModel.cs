@@ -14,9 +14,5 @@ namespace MSDentalSys.Web.Models.ViewModels
         [StringLength(300, ErrorMessage = "La descripción no puede superar los 300 caracteres.")]
         [Display(Name = "Descripción")]
         public string? Descripcion { get; set; }
-
-        [Range(1, 1440, ErrorMessage = "La duración debe estar entre 1 y 1440 minutos.")]
-        [Display(Name = "Duración estimada (minutos)")]
-        public int? DuracionEstimadaMinutos { get; set; }
     }
 }

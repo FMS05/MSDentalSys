@@ -22,15 +22,14 @@ public class ServiciosControllerTests
         var result = await controller.Create(new ServicioFormViewModel
         {
             Nombre = "Limpieza Dental",
-            Descripcion = "Servicio ficticio de limpieza preventiva",
-            DuracionEstimadaMinutos = 45
+            Descripcion = "Servicio ficticio de limpieza preventiva"
         });
 
         Assert.IsType<RedirectToActionResult>(result);
         var servicio = await database.Context.ServiciosOdontologicos.SingleAsync();
         Assert.Equal("Limpieza Dental", servicio.Nombre);
         Assert.Equal("Servicio ficticio de limpieza preventiva", servicio.Descripcion);
-        Assert.Equal(45, servicio.DuracionEstimadaMinutos);
+        Assert.Null(servicio.DuracionEstimadaMinutos);
         Assert.True(servicio.Estado);
         Assert.NotEqual(default, servicio.FechaCreacion);
     }
@@ -54,8 +53,7 @@ public class ServiciosControllerTests
         {
             ServicioOdontologicoId = servicio.ServicioOdontologicoId,
             Nombre = "Consulta Actualizada",
-            Descripcion = "Descripcion actualizada",
-            DuracionEstimadaMinutos = 60
+            Descripcion = "Descripcion actualizada"
         });
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -63,7 +61,7 @@ public class ServiciosControllerTests
         Assert.Equal(servicio.ServicioOdontologicoId, stored.ServicioOdontologicoId);
         Assert.Equal("Consulta Actualizada", stored.Nombre);
         Assert.Equal("Descripcion actualizada", stored.Descripcion);
-        Assert.Equal(60, stored.DuracionEstimadaMinutos);
+        Assert.Equal(30, stored.DuracionEstimadaMinutos);
         Assert.True(stored.Estado);
         Assert.Equal(originalDate, stored.FechaCreacion);
     }
