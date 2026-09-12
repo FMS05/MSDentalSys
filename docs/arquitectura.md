@@ -235,3 +235,11 @@ La carga inicial se solicita desde Subservicios/Index mediante POST LoadInitialC
 El catálogo contiene exactamente 45 subservicios. Sus duraciones son parámetros operativos de MSDentalSys, no información oficial clínica. CodigoCatalogo es una identidad técnica nullable, única cuando está presente y no editable desde el formulario. Permite reconocer entradas renombradas y no recrearlas. La carga vincula registros coincidentes existentes sin modificar nombre, descripción, duración o estado; conserva registros manuales. Los códigos existentes no deben renumerarse en cambios futuros del catálogo. La carga controlada debe ejecutarse por un administrador a la vez.
 
 La migración AddSubserviciosOdontologicos debe aplicarse mediante el procedimiento habitual de despliegue antes de utilizar el catálogo; el seeder no ejecuta migraciones ni EnsureCreated. No existe componente de precios, costos, tarifas ni facturación.
+
+### Clasificación de subservicios — Fase 1
+
+ClasificacionSubservicio se define en Data/Models con Principal = 1 y Complementario = 2. SubservicioOdontologico.Clasificacion es nullable y se convierte a entero; CK_Subservicios_Clasificacion permite únicamente NULL, 1 o 2. AddClasificacionToSubservicios agrega columna y CHECK sin default, backfill ni cambios a relaciones, índices o catálogo.
+
+El ViewModel requiere clasificación y SubserviciosController valida explícitamente los dos valores permitidos tanto en Create como en Edit. Edit GET permite históricos NULL; guardar exige clasificarlos. El selector compartido en _Fields sirve a Create/Edit y Details muestra «Sin clasificar» para NULL. Index conserva sus cinco columnas para no ensanchar la tabla compartida con Details de Servicios; la clasificación se consulta en Details del subservicio.
+
+El seeder provisional permanece intacto y crea sus registros con NULL; no se asigna clasificación masivamente. Activación, autorización y selección para Citas conservan su comportamiento, sin filtros por clasificación. No cambian duración, códigos, FK compuesta, snapshot de citas, Reagendar ni H3/H4. El catálogo definitivo y H8 siguen pendientes.

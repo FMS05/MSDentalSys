@@ -13,7 +13,7 @@ using Xunit;
 
 namespace MSDentalSys.Tests.Controllers;
 
-public class SubserviciosControllerTests
+public partial class SubserviciosControllerTests
 {
     [Theory]
     [InlineData(1)]
@@ -414,7 +414,7 @@ public class SubserviciosControllerTests
             var http = new DefaultHttpContext();
             return new SubserviciosController(context) { ControllerContext = new ControllerContext { HttpContext = http }, TempData = new TempDataDictionary(http, new TempProvider()) };
         }
-        public SubservicioFormViewModel Form(int? minutes = 30) => new() { ServicioOdontologicoId = parent.ServicioOdontologicoId, Nombre = "Evaluación", DuracionEstimadaMinutos = minutes };
+        public SubservicioFormViewModel Form(int? minutes = 30) => new() { ServicioOdontologicoId = parent.ServicioOdontologicoId, Nombre = "Evaluación", DuracionEstimadaMinutos = minutes, Clasificacion = ClasificacionSubservicio.Principal };
         public async Task<SubservicioOdontologico> AddAsync()
         {
             var item = new SubservicioOdontologico { ServicioOdontologicoId = parent.ServicioOdontologicoId, Nombre = "Evaluación", DuracionEstimadaMinutos = 30 };

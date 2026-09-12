@@ -34,8 +34,12 @@ namespace MSDentalSys.Data.Context
                     .HasDatabaseName("UX_Subservicios_Servicio_Nombre");
                 entity.HasIndex(s => s.CodigoCatalogo).IsUnique()
                     .HasFilter("[CodigoCatalogo] IS NOT NULL");
-                entity.ToTable("SubserviciosOdontologicos", table => table.HasCheckConstraint(
-                    "CK_Subservicios_Duracion", "[DuracionEstimadaMinutos] >= 1 AND [DuracionEstimadaMinutos] <= 1440"));
+                entity.Property(s => s.Clasificacion).HasConversion<int>();
+                entity.ToTable("SubserviciosOdontologicos", table =>
+                {
+                    table.HasCheckConstraint("CK_Subservicios_Duracion", "[DuracionEstimadaMinutos] >= 1 AND [DuracionEstimadaMinutos] <= 1440");
+                    table.HasCheckConstraint("CK_Subservicios_Clasificacion", "[Clasificacion] IS NULL OR [Clasificacion] IN (1, 2)");
+                });
             });
             builder.Entity<Cita>().HasOne(c => c.SubservicioOdontologico).WithMany(s => s.Citas)
                 .HasForeignKey(c => new { c.ServicioOdontologicoId, c.SubservicioOdontologicoId })

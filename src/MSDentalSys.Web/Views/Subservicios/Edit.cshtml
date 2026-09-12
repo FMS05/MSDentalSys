@@ -8,6 +8,10 @@
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
         <div class="mb-4"><strong>Servicio</strong><p>@Model.ServicioNombre</p><span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span></div>
         <partial name="_Fields" model="Model" />
+        @if (Model.Clasificacion is null)
+        {
+            <p class="text-muted mt-2">Sin clasificar. Selecciona una clasificación para guardar.</p>
+        }
         <div class="d-flex justify-content-end gap-2 mt-4"><a asp-action="Details" asp-route-id="@Model.SubservicioOdontologicoId" class="btn btn-outline-secondary">Cancelar</a><button class="btn btn-ms-primary" type="submit">Guardar cambios</button></div>
     </form></div>
 </div>

@@ -4,6 +4,7 @@
     <partial name="_Messages" />
     <div class="page-heading"><div><p class="dashboard-eyebrow">Catálogo clínico</p><h1>@Model.Nombre</h1></div><a asp-action="Index" class="btn btn-light">Volver</a></div>
     <div class="service-detail-card"><dl class="service-detail-grid">
+        <div><dt>Clasificación</dt><dd>@(Model.Clasificacion?.ToString() ?? "Sin clasificar")</dd></div>
         <div><dt>Servicio</dt><dd><a asp-controller="Servicios" asp-action="Details" asp-route-id="@Model.ServicioOdontologicoId">@Model.ServicioOdontologico.Nombre</a></dd></div>
         <div><dt>Nombre</dt><dd>@Model.Nombre</dd></div><div><dt>Descripción</dt><dd>@(Model.Descripcion ?? "Sin descripción")</dd></div>
         <div><dt>Duración estimada</dt><dd>@Model.DuracionEstimadaMinutos minutos</dd></div><div><dt>Estado</dt><dd>@(Model.Estado ? "Activo" : "Inactivo")</dd></div><div><dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>

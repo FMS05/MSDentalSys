@@ -112,3 +112,11 @@ Validación final: 375 pruebas aprobadas, 0 fallidas y 0 omitidas; dotnet build 
 Cobertura: permisos HTTP del endpoint (Administrador/Recepcionista, anónimo y otros roles), servicio inexistente/inactivo, filtrado de hijos activos, orden y contrato JSON mínimo; subservicio requerido, inexistente, inactivo o de otro servicio, duración fuera de rango y desactivación entre GET y POST. Se comprueba reconstrucción del formulario, snapshot desde BD, duración manipulada por HTTP ignorada, cambios posteriores del catálogo, nueva cita con nueva duración y conservación al reagendar. Details se verifica con procedimiento y con datos históricos NULL.
 
 La integración verifica el markup y la entrega del script con limpieza, cancelación y guardas de respuestas obsoletas. No ejecuta JavaScript en un navegador ni simula la red con E2E; no se incorporó un framework de navegador. H8 sigue pendiente, sin intervalos ni cambios en HasScheduleConflictAsync. No se creó ni aplicó una migración.
+
+## Clasificación de subservicios — Fase 1
+
+Baseline: 380 pruebas. Resultado: 403 aprobadas, 0 fallidas y 0 omitidas; build con 0 errores y 0 advertencias. Se agregan 23 casos en SubserviciosClasificacionTests y SubserviciosClasificacionIntegrationTests. Los formularios válidos de pruebas anteriores incorporan Principal sin eliminar su cobertura.
+
+Se comprueban Create con ambos valores, rechazo server-side de NULL/0/99, Edit en ambos sentidos y clasificación progresiva de históricos, rechazo de pérdida de clasificación, conservación de duración/código/padre/snapshot, CHECK SQLite con NULL/1/2/99 y seeder de 45 entradas sin clasificación. La integración HTTP verifica selector, Details y Edit históricos, persistencia válida y rechazo de valores numéricos o texto manipulados. La suite anterior conserva cobertura de autorizaciones, endpoint ParaCitas y H3/H4.
+
+La migración AddClasificacionToSubservicios se generó y revisó junto con el snapshot: solo columna nullable y CHECK en Up, sin cambios de datos. No se aplicó a la BD operativa. EF CLI 9.0.18 emitió un aviso por ser anterior al runtime 9.0.20; no se actualizaron herramientas como parte de esta fase.

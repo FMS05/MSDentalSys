@@ -63,7 +63,7 @@ public partial class SubserviciosIntegrationTests
         {
             ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value),
             ["ServicioOdontologicoId"] = parent.ServicioOdontologicoId.ToString(),
-            ["Nombre"] = "Creado por HTTP", ["DuracionEstimadaMinutos"] = "45"
+            ["Nombre"] = "Creado por HTTP", ["DuracionEstimadaMinutos"] = "45", ["Clasificacion"] = "1"
         }));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.True(await context.SubserviciosOdontologicos.AnyAsync(s => s.Nombre == "Creado por HTTP"));

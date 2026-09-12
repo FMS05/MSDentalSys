@@ -64,7 +64,8 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
         {
             ServicioOdontologicoId = model.ServicioOdontologicoId,
             Nombre = model.Nombre, Descripcion = model.Descripcion,
-            DuracionEstimadaMinutos = model.DuracionEstimadaMinutos!.Value
+            DuracionEstimadaMinutos = model.DuracionEstimadaMinutos!.Value,
+            Clasificacion = model.Clasificacion
         };
         context.SubserviciosOdontologicos.Add(item);
         if (!await SaveAsync()) { await LoadOptionsAsync(model); return View(model); }
@@ -81,7 +82,8 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
         {
             SubservicioOdontologicoId = item.SubservicioOdontologicoId,
             ServicioOdontologicoId = item.ServicioOdontologicoId, ServicioNombre = item.ServicioOdontologico.Nombre,
-            Nombre = item.Nombre, Descripcion = item.Descripcion, DuracionEstimadaMinutos = item.DuracionEstimadaMinutos
+            Nombre = item.Nombre, Descripcion = item.Descripcion, DuracionEstimadaMinutos = item.DuracionEstimadaMinutos,
+            Clasificacion = item.Clasificacion
         });
     }
 
@@ -102,6 +104,7 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
         item.Nombre = model.Nombre;
         item.Descripcion = model.Descripcion;
         item.DuracionEstimadaMinutos = model.DuracionEstimadaMinutos!.Value;
+        item.Clasificacion = model.Clasificacion;
         if (!await SaveAsync()) return View(model);
         TempData["SuccessMessage"] = "Subservicio actualizado correctamente.";
         return RedirectToAction(nameof(Details), new { id });
@@ -146,6 +149,8 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
 
     private void ValidateFields(SubservicioFormViewModel model)
     {
+        if (model.Clasificacion is not (ClasificacionSubservicio.Principal or ClasificacionSubservicio.Complementario))
+            ModelState.AddModelError(nameof(model.Clasificacion), "Selecciona una clasificación válida: Principal o Complementario.");
         model.Nombre = model.Nombre?.Trim() ?? string.Empty;
         model.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim();
         if (model.Nombre.Length is 0 or > 100)

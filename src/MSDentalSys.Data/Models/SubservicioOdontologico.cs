@@ -12,6 +12,7 @@ public class SubservicioOdontologico
     public string? Descripcion { get; set; }
     [Range(1, 1440)]
     public int DuracionEstimadaMinutos { get; set; }
+    public ClasificacionSubservicio? Clasificacion { get; set; }
     public bool Estado { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.Now;
     // Identidad del catálogo inicial; no editable desde formularios.
