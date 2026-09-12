@@ -6,8 +6,8 @@
     @if (User.IsInRole("Administrador"))
     {
         <div class="service-toolbar"><a asp-action="Create" class="btn btn-ms-primary">Nuevo subservicio</a>
-        <form asp-action="LoadInitialCatalog" method="post"><button type="submit" class="btn btn-outline-secondary">Cargar catálogo inicial</button></form></div>
-        <p class="text-muted">La carga incorpora los 45 procedimientos predefinidos que falten. Requiere sus servicios principales activos y conserva los cambios realizados en el catálogo.</p>
+        </div>
+        <p class="text-muted">La carga provisional está deshabilitada. Los procedimientos definitivos se incorporarán en la Fase 2B.</p>
     }
     <partial name="_List" model="Model" />
 </div>

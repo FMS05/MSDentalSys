@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
+using MSDentalSys.Data.InitialData;
+using System.Data.Common;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Models.ViewModels;
 
@@ -42,6 +44,27 @@ namespace MSDentalSys.Web.Controllers
                 SearchTerm = searchTerm,
                 Servicios = servicios
             });
+        }
+
+        [HttpPost, Authorize(Roles = "Administrador"), ValidateAntiForgeryToken]
+        public async Task<IActionResult> PrepareCatalog()
+        {
+            try
+            {
+                var changed = await ServicioCatalogoSeeder.SeedAsync(_context);
+                TempData["SuccessMessage"] = changed
+                    ? "El catálogo de servicios odontológicos fue preparado correctamente."
+                    : "El catálogo de servicios odontológicos ya se encuentra actualizado.";
+            }
+            catch (InvalidOperationException)
+            {
+                TempData["ErrorMessage"] = "No se pudo preparar el catálogo. Revisa las identidades históricas y posibles servicios duplicados o ajenos al catálogo. No se aplicaron cambios.";
+            }
+            catch (Exception ex) when (ex is DbUpdateException or DbException)
+            {
+                TempData["ErrorMessage"] = "No se pudo preparar el catálogo. No se aplicaron cambios; revisa posibles conflictos y vuelve a intentarlo.";
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]

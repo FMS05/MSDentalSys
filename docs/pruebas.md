@@ -120,3 +120,9 @@ Baseline: 380 pruebas. Resultado: 403 aprobadas, 0 fallidas y 0 omitidas; build 
 Se comprueban Create con ambos valores, rechazo server-side de NULL/0/99, Edit en ambos sentidos y clasificación progresiva de históricos, rechazo de pérdida de clasificación, conservación de duración/código/padre/snapshot, CHECK SQLite con NULL/1/2/99 y seeder de 45 entradas sin clasificación. La integración HTTP verifica selector, Details y Edit históricos, persistencia válida y rechazo de valores numéricos o texto manipulados. La suite anterior conserva cobertura de autorizaciones, endpoint ParaCitas y H3/H4.
 
 La migración AddClasificacionToSubservicios se generó y revisó junto con el snapshot: solo columna nullable y CHECK en Up, sin cambios de datos. No se aplicó a la BD operativa. EF CLI 9.0.18 emitió un aviso por ser anterior al runtime 9.0.20; no se actualizaron herramientas como parte de esta fase.
+
+## Servicios definitivos — Fase 2A
+
+Baseline 403 pruebas; 415 aprobadas, 0 fallidas, 0 omitidas. ServicioCatalogoTests agrega 12 casos: conciliación de los cinco IDs, siete altas, 12 activos, idempotencia, conservación de duración legacy/fechas y referencias de citas, tratamientos y subservicios, sin alterar código/clasificación/duración del procedimiento. También cubre identidad incompatible, ID ausente, duplicado activo/inactivo y servicio ajeno, verificando ausencia de cambios parciales.
+
+Un interceptor provoca un fallo después de SaveChanges y antes del commit para comprobar rollback real en SQLite. Las pruebas HTTP comprueban autorización, antiforgery, mensajes de primera/segunda carga y deshabilitación efectiva del POST provisional. Las pruebas previas H3/H4 permanecen aprobadas. Build: 0 errores y 0 advertencias. No se ejecutó la conciliación en la BD de desarrollo; no hay migración ni carga de los 139 procedimientos.

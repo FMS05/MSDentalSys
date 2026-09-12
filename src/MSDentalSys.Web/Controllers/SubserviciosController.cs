@@ -5,7 +5,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
-using MSDentalSys.Data.InitialData;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Models.ViewModels;
 
@@ -133,17 +132,9 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
     }
 
     [HttpPost, Authorize(Roles = "Administrador"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> LoadInitialCatalog()
+    public IActionResult LoadInitialCatalog()
     {
-        try
-        {
-            var count = await SubservicioSeeder.SeedAsync(context);
-            TempData["SuccessMessage"] = $"Carga inicial completada: {count} subservicios nuevos.";
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-        }
+        TempData["ErrorMessage"] = "La carga del catálogo provisional está deshabilitada. Los procedimientos definitivos se incorporarán en la Fase 2B.";
         return RedirectToAction(nameof(Index));
     }
 
