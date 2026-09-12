@@ -1,0 +1,7 @@
+@foreach (var key in new[] { "SuccessMessage", "ErrorMessage" })
+{
+    if (TempData[key] is string message)
+    {
+        <div class="alert @(key == "SuccessMessage" ? "alert-success" : "alert-danger")">@message</div>
+    }
+}

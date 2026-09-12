@@ -1,0 +1,12 @@
+@model MSDentalSys.Web.Models.ViewModels.SubservicioFormViewModel
+@{ ViewData["Title"] = "Crear subservicio"; }
+<div class="service-page">
+    <div class="page-heading"><div><p class="dashboard-eyebrow">Catálogo clínico</p><h1>Crear subservicio</h1></div><a asp-action="Index" class="btn btn-light">Volver</a></div>
+    <div class="service-form-card"><form asp-action="Create" method="post" autocomplete="off">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-4"><label asp-for="ServicioOdontologicoId" class="form-label"></label><select asp-for="ServicioOdontologicoId" asp-items="Model.Servicios" class="form-select"><option value="">Selecciona un servicio</option></select><span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span></div>
+        <partial name="_Fields" model="Model" />
+        <div class="d-flex justify-content-end gap-2 mt-4"><a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a><button class="btn btn-ms-primary" type="submit">Crear subservicio</button></div>
+    </form></div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

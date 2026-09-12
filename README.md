@@ -232,3 +232,11 @@ Los módulos administrativos y clínicos indicados en esta documentación están
 ## Autor / contexto académico
 
 Proyecto desarrollado como parte del monográfico para optar por el título de Licenciatura en Informática en la Universidad Autónoma de Santo Domingo (UASD).
+
+### Subservicios odontológicos (Fase A)
+
+Desde el detalle de un servicio se consulta su catálogo de procedimientos. Solo el Administrador puede crear, editar nombre/descripción/duración y activar o desactivar subservicios; el padre permanece fijo. Recepcionista y Odontologo tienen consulta.
+
+El catálogo inicial contiene 45 procedimientos y se carga explícitamente desde Subservicios, después de aplicar la migración y preparar los 10 servicios padre activos con los nombres del catálogo. No se carga automáticamente al arrancar. Sus duraciones son parámetros operativos del sistema, no información oficial clínica. La carga conserva ediciones e inactivos y reconoce renombrados mediante un código técnico estable.
+
+Cita tiene dos columnas preparatorias nullable (SubservicioOdontologicoId y DuracionProgramadaMinutos), sin completar datos históricos. Create y Reagendar siguen funcionando como antes; H8 permanece pendiente y H3/H4 se conservan. La duración del servicio principal y el flujo de tratamientos no cambian. No existe componente económico.

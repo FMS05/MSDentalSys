@@ -53,6 +53,7 @@ namespace MSDentalSys.Web.Controllers
             }
 
             var servicio = await _context.ServiciosOdontologicos
+                .Include(s => s.Subservicios)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(servicio => servicio.ServicioOdontologicoId == id);
 

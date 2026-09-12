@@ -211,3 +211,17 @@ Inicio Web → RoleSeeder / AdminSeeder / SeguroSeeder (salvo Testing)
 MSDentalSys.Tests → Web / Data
   Pruebas aisladas: SQLite InMemory / WebApplicationFactory
 ```
+
+## Subservicios odontológicos — Fase A
+
+ServicioOdontologico tiene una relación 1:N con SubservicioOdontologico. Cada procedimiento registra Nombre (100), Descripcion opcional (300), DuracionEstimadaMinutos obligatoria entre 1 y 1440, Estado y FechaCreacion. El Administrador administra; Recepcionista y Odontologo consultan. No se ofrece eliminación física ni cambio de servicio padre al editar. Desactivar el padre conserva los estados individuales de sus hijos; activar un hijo requiere padre activo.
+
+Cita conserva ServicioOdontologicoId y agrega SubservicioOdontologicoId y DuracionProgramadaMinutos nullable, sin valores por defecto ni backfill. Una FK compuesta garantiza la pertenencia del subservicio al servicio; las eliminaciones son Restrict. Los CHECK validan duraciones y el índice único (ServicioOdontologicoId, Nombre) incluye inactivos. Las comparaciones de nombres conservan la collation del proveedor y Trim del formulario.
+
+Estas columnas solo preparan el esquema: Create Cita, Reschedule, H3 y H4 no cambian. H8 todavía NO está activo. Las citas históricas y las nuevas de esta fase pueden seguir sin subservicio ni duración. La duración del servicio principal permanece sin cambios por compatibilidad. Tratamiento continúa asociado al servicio principal.
+
+La carga inicial se solicita desde Subservicios/Index mediante POST LoadInitialCatalog, solo Administrador y con antiforgery. No se ejecuta en Program ni automáticamente al iniciar. Requiere que los 10 servicios padre del catálogo existan una sola vez y estén activos para las entradas pendientes. Ante padre inexistente, ambiguo o inactivo se revierte toda la carga y se informa el problema; no se crean padres arbitrariamente.
+
+El catálogo contiene exactamente 45 subservicios. Sus duraciones son parámetros operativos de MSDentalSys, no información oficial clínica. CodigoCatalogo es una identidad técnica nullable, única cuando está presente y no editable desde el formulario. Permite reconocer entradas renombradas y no recrearlas. La carga vincula registros coincidentes existentes sin modificar nombre, descripción, duración o estado; conserva registros manuales. Los códigos existentes no deben renumerarse en cambios futuros del catálogo. La carga controlada debe ejecutarse por un administrador a la vez.
+
+La migración AddSubserviciosOdontologicos debe aplicarse mediante el procedimiento habitual de despliegue antes de utilizar el catálogo; el seeder no ejecuta migraciones ni EnsureCreated. No existe componente de precios, costos, tarifas ni facturación.

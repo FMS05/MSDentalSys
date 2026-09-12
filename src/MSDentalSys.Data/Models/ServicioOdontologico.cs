@@ -20,5 +20,6 @@ namespace MSDentalSys.Data.Models
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
 
         public ICollection<Cita> Citas { get; set; } = new List<Cita>();
+        public ICollection<SubservicioOdontologico> Subservicios { get; set; } = new List<SubservicioOdontologico>();
     }
 }

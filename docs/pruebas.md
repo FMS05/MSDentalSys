@@ -8,7 +8,7 @@ Las pruebas de integración HTTP utilizan `Microsoft.AspNetCore.Mvc.Testing` med
 
 El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de producción. La autenticación HTTP se simula exclusivamente en Tests mediante claims con `NameIdentifier`, `Name` y `Role` para los roles `Administrador`, `Odontologo` y `Recepcionista`.
 
-## Grupos actuales
+## Desglose histórico previo (212 casos)
 
 | Grupo | Pruebas |
 |---|---:|
@@ -92,3 +92,13 @@ Las pruebas manuales se realizaron correctamente en navegador, tanto en Create c
 El servidor sigue siendo autoritativo. No se modifican masivamente cédulas históricas; la consulta contempla valores con y sin guiones. No se valida dígito verificador ni existencia oficial.
 
 Las pruebas HTTP validan el pipeline de autenticación y autorización de rutas con `WebApplicationFactory`, incluyendo permisos por rol y acceso de usuarios anónimos. La autenticación se simula mediante claims controlados en el entorno `Testing`. No son pruebas de navegador y no utilizan Selenium, Playwright ni servicios externos. Tampoco constituyen pruebas de rendimiento ni cobertura total del sistema.
+
+## Validación de Subservicios — Fase A
+
+Base anterior: 313 pruebas. Resultado de esta fase: 350 aprobadas, 0 fallidas, 0 omitidas; 37 casos nuevos en Controllers/SubserviciosControllerTests.cs e Integration/SubserviciosIntegrationTests.cs.
+
+Se comprueban Create/Edit, normalización, límites de duración, padres inexistentes/inactivos, duplicados incluso inactivos, nombres iguales en padres distintos, colisión concurrente real de UNIQUE en Create/Edit, rechazo de cambio de padre, conservación del snapshot al editar duración y activación/desactivación sin eliminar citas.
+
+El esquema SQLite relacional comprueba citas con columnas nuevas nulas, asociaciones válidas, rechazo de pares servicio/subservicio incompatibles y CHECK de duración tanto en Cita como en Subservicio. Las pruebas del seeder verifican los 45 elementos, repetición, conservación de cambios manuales, registros inactivos y renombrados, y rollback por padres ausentes, ambiguos o inactivos. La integración HTTP verifica consultas de los tres roles, administración exclusiva, formularios Razor y antiforgery real.
+
+Estas pruebas no activan ni demuestran H8: se conserva la detección de inicios exactos H4 y las pruebas previas H3. No se ejecutó database update sobre una BD operativa. Las duraciones del catálogo son parámetros operativos y no datos clínicos oficiales; no se introdujeron campos económicos.

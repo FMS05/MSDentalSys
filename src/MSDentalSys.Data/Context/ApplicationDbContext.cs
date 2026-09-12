@@ -14,6 +14,7 @@ namespace MSDentalSys.Data.Context
         public DbSet<Paciente> Pacientes { get; set; }
         public DbSet<AntecedenteClinico> AntecedentesClinicos { get; set; }
         public DbSet<ServicioOdontologico> ServiciosOdontologicos { get; set; }
+        public DbSet<SubservicioOdontologico> SubserviciosOdontologicos { get; set; }
         public DbSet<Cita> Citas { get; set; }
         public DbSet<AtencionOdontologica> AtencionesOdontologicas { get; set; }
         public DbSet<Diagnostico> Diagnosticos { get; set; }
@@ -24,6 +25,24 @@ namespace MSDentalSys.Data.Context
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<SubservicioOdontologico>(entity =>
+            {
+                entity.HasOne(s => s.ServicioOdontologico).WithMany(s => s.Subservicios)
+                    .HasForeignKey(s => s.ServicioOdontologicoId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(s => new { s.ServicioOdontologicoId, s.Nombre }).IsUnique()
+                    .HasDatabaseName("UX_Subservicios_Servicio_Nombre");
+                entity.HasIndex(s => s.CodigoCatalogo).IsUnique()
+                    .HasFilter("[CodigoCatalogo] IS NOT NULL");
+                entity.ToTable("SubserviciosOdontologicos", table => table.HasCheckConstraint(
+                    "CK_Subservicios_Duracion", "[DuracionEstimadaMinutos] >= 1 AND [DuracionEstimadaMinutos] <= 1440"));
+            });
+            builder.Entity<Cita>().HasOne(c => c.SubservicioOdontologico).WithMany(s => s.Citas)
+                .HasForeignKey(c => new { c.ServicioOdontologicoId, c.SubservicioOdontologicoId })
+                .HasPrincipalKey(s => new { s.ServicioOdontologicoId, s.SubservicioOdontologicoId })
+                .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<Cita>().ToTable("Citas", table => table.HasCheckConstraint(
+                "CK_Citas_DuracionProgramada", "[DuracionProgramadaMinutos] IS NULL OR ([DuracionProgramadaMinutos] >= 1 AND [DuracionProgramadaMinutos] <= 1440)"));
 
             builder.Entity<Cita>()
                 .HasIndex(c => new { c.OdontologoId, c.FechaHoraInicio })
@@ -126,4 +145,3 @@ namespace MSDentalSys.Data.Context
         }
     }
 }
-

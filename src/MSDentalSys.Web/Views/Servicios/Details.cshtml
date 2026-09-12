@@ -43,3 +43,12 @@
         </dl>
     </div>
 </div>
+<div class="service-page mt-4">
+    <div class="page-heading"><h2>Subservicios</h2><a asp-controller="Subservicios" asp-action="Index" class="btn btn-light">Ver catálogo</a>
+    @if (User.IsInRole("Administrador") && Model.Estado)
+    {
+        <a asp-controller="Subservicios" asp-action="Create" asp-route-servicioId="@Model.ServicioOdontologicoId" class="btn btn-ms-primary">Nuevo subservicio</a>
+    }
+    </div>
+    <partial name="~/Views/Subservicios/_List.cshtml" model="Model.Subservicios.OrderBy(s => s.Nombre)" />
+</div>
