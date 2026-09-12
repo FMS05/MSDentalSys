@@ -39,6 +39,15 @@
                     <span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
+                    <label asp-for="SubservicioOdontologicoId" class="form-label"></label>
+                    <select asp-for="SubservicioOdontologicoId" asp-items="Model.Subservicios" class="form-select"
+                            disabled="@(!Model.Subservicios.Any())" data-endpoint="@Url.Action("ParaCitas", "Subservicios")" aria-describedby="subservicios-status">
+                        <option value="">Seleccione un subservicio</option>
+                    </select>
+                    <span asp-validation-for="SubservicioOdontologicoId" class="text-danger"></span>
+                    <small id="subservicios-status" class="text-muted" role="status"></small>
+                </div>
+                <div class="col-md-6">
                     <label asp-for="FechaHoraInicio" class="form-label"></label>
                     <input asp-for="FechaHoraInicio" class="form-control" autocomplete="off" type="datetime-local" />
                     <span asp-validation-for="FechaHoraInicio" class="text-danger"></span>
@@ -59,6 +68,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/citas-subservicios.js" asp-append-version="true"></script>
     <script>
         (() => {
             const search = document.getElementById('PacienteBusqueda');

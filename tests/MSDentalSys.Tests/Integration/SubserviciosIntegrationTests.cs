@@ -9,7 +9,7 @@ using Xunit;
 
 namespace MSDentalSys.Tests.Integration;
 
-public class SubserviciosIntegrationTests
+public partial class SubserviciosIntegrationTests
 {
     [Theory]
     [InlineData("Administrador")]

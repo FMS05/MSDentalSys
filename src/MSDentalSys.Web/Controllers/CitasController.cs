@@ -162,11 +162,17 @@ namespace MSDentalSys.Web.Controllers
         [Authorize(Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Create(CitaFormViewModel model)
         {
-            if (!ModelState.IsValid)
+            var subservicio = await _context.SubserviciosOdontologicos.AsNoTracking()
+                .SingleOrDefaultAsync(s => s.SubservicioOdontologicoId == model.SubservicioOdontologicoId);
+            if (model.SubservicioOdontologicoId is null)
             {
-                await LoadFormOptionsAsync(model);
-                return View(model);
+                ModelState.AddModelError(nameof(model.SubservicioOdontologicoId), "Selecciona un subservicio.");
             }
+            else if (subservicio is null || !subservicio.Estado ||
+                subservicio.ServicioOdontologicoId != model.ServicioOdontologicoId)
+                ModelState.AddModelError(nameof(model.SubservicioOdontologicoId), "El subservicio no existe, está inactivo o no pertenece al servicio seleccionado.");
+            else if (subservicio.DuracionEstimadaMinutos is < 1 or > 1440)
+                ModelState.AddModelError(nameof(model.SubservicioOdontologicoId), "La duración del subservicio debe estar entre 1 y 1440 minutos.");
 
             if (!await IsActivePatientAsync(model.PacienteId))
             {
@@ -199,6 +205,8 @@ namespace MSDentalSys.Web.Controllers
                 PacienteId = model.PacienteId,
                 OdontologoId = model.OdontologoId,
                 ServicioOdontologicoId = model.ServicioOdontologicoId,
+                SubservicioOdontologicoId = subservicio!.SubservicioOdontologicoId,
+                DuracionProgramadaMinutos = subservicio.DuracionEstimadaMinutos,
                 FechaHoraInicio = model.FechaHoraInicio,
                 EstadoCita = "Pendiente",
                 Observaciones = NullIfWhiteSpace(model.Observaciones),
@@ -436,7 +444,8 @@ namespace MSDentalSys.Web.Controllers
             return _context.Citas
                 .Include(c => c.Paciente)
                 .Include(c => c.Odontologo)
-                .Include(c => c.ServicioOdontologico);
+                .Include(c => c.ServicioOdontologico)
+                .Include(c => c.SubservicioOdontologico);
         }
 
         private async Task LoadFormOptionsAsync(CitaFormViewModel model)
@@ -471,6 +480,24 @@ namespace MSDentalSys.Web.Controllers
                 Text = s.Nombre,
                 Selected = s.ServicioOdontologicoId == model.ServicioOdontologicoId
             });
+            model.Subservicios = servicios.Any(s => s.ServicioOdontologicoId == model.ServicioOdontologicoId)
+                ? await _context.SubserviciosOdontologicos.AsNoTracking()
+                    .Where(s => s.ServicioOdontologicoId == model.ServicioOdontologicoId && s.Estado)
+                    .OrderBy(s => s.Nombre)
+                    .Select(s => new SelectListItem
+                    {
+                        Value = s.SubservicioOdontologicoId.ToString(),
+                        Text = s.Nombre + " — " + s.DuracionEstimadaMinutos + " min",
+                        Selected = s.SubservicioOdontologicoId == model.SubservicioOdontologicoId
+                    }).ToListAsync()
+                : [];
+            if (model.SubservicioOdontologicoId.HasValue &&
+                !model.Subservicios.Any(s => s.Value == model.SubservicioOdontologicoId.Value.ToString()))
+            {
+                model.SubservicioOdontologicoId = null;
+                // El tag helper prioriza el valor enviado sobre el modelo; conserva los errores.
+                ModelState.SetModelValue(nameof(model.SubservicioOdontologicoId), null, null);
+            }
         }
 
         private async Task<bool> IsActivePatientAsync(int pacienteId)

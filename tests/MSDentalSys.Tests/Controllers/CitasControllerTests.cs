@@ -199,7 +199,8 @@ public partial class CitasControllerTests
             OdontologoId = database.OdontologistId,
             ServicioOdontologicoId = database.ServiceId,
             FechaHoraInicio = start,
-            Observaciones = "Cita ficticia generada por prueba automatizada"
+            Observaciones = "Cita ficticia generada por prueba automatizada",
+            SubservicioOdontologicoId = database.SubserviceId
         });
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -596,6 +597,7 @@ public partial class CitasControllerTests
         public int PatientId { get; private set; }
         public string OdontologistId { get; private set; } = string.Empty;
         public int ServiceId { get; private set; }
+        public int SubserviceId { get; private set; }
 
         public ApplicationDbContext CreateIndependentContext() => new(
             new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options);
@@ -671,6 +673,13 @@ public partial class CitasControllerTests
             PatientId = patient.PacienteId;
             OdontologistId = odontologist.Id;
             ServiceId = service.ServicioOdontologicoId;
+            var subservice = new SubservicioOdontologico
+            {
+                ServicioOdontologicoId = ServiceId, Nombre = "Procedimiento de prueba", DuracionEstimadaMinutos = 60
+            };
+            Context.SubserviciosOdontologicos.Add(subservice);
+            await Context.SaveChangesAsync();
+            SubserviceId = subservice.SubservicioOdontologicoId;
         }
 
         public CitasController CreateController(string? role = null)
@@ -738,6 +747,7 @@ public partial class CitasControllerTests
                 PacienteId = PatientId,
                 OdontologoId = OdontologistId,
                 ServicioOdontologicoId = ServiceId,
+                SubservicioOdontologicoId = SubserviceId,
                 FechaHoraInicio = start
             };
         }

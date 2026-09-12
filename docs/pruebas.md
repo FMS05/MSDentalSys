@@ -102,3 +102,13 @@ Se comprueban Create/Edit, normalización, límites de duración, padres inexist
 El esquema SQLite relacional comprueba citas con columnas nuevas nulas, asociaciones válidas, rechazo de pares servicio/subservicio incompatibles y CHECK de duración tanto en Cita como en Subservicio. Las pruebas del seeder verifican los 45 elementos, repetición, conservación de cambios manuales, registros inactivos y renombrados, y rollback por padres ausentes, ambiguos o inactivos. La integración HTTP verifica consultas de los tres roles, administración exclusiva, formularios Razor y antiforgery real.
 
 Estas pruebas no activan ni demuestran H8: se conserva la detección de inicios exactos H4 y las pruebas previas H3. No se ejecutó database update sobre una BD operativa. Las duraciones del catálogo son parámetros operativos y no datos clínicos oficiales; no se introdujeron campos económicos.
+
+## Validación de integración de citas — Fase B
+
+Se agregan 21 casos en Controllers/CitasSubserviciosTests.cs e Integration/CitasSubserviciosIntegrationTests.cs. Se actualizan los datos de soporte de Create para incluir el subservicio obligatorio, conservando las pruebas anteriores H3/H4.
+
+Validación final: 375 pruebas aprobadas, 0 fallidas y 0 omitidas; dotnet build con 0 errores y 0 advertencias. Build y pruebas se ejecutaron fuera del sandbox tras detectar restricciones de acceso a NuGet.Config y al registro de eventos de Windows.
+
+Cobertura: permisos HTTP del endpoint (Administrador/Recepcionista, anónimo y otros roles), servicio inexistente/inactivo, filtrado de hijos activos, orden y contrato JSON mínimo; subservicio requerido, inexistente, inactivo o de otro servicio, duración fuera de rango y desactivación entre GET y POST. Se comprueba reconstrucción del formulario, snapshot desde BD, duración manipulada por HTTP ignorada, cambios posteriores del catálogo, nueva cita con nueva duración y conservación al reagendar. Details se verifica con procedimiento y con datos históricos NULL.
+
+La integración verifica el markup y la entrega del script con limpieza, cancelación y guardas de respuestas obsoletas. No ejecuta JavaScript en un navegador ni simula la red con E2E; no se incorporó un framework de navegador. H8 sigue pendiente, sin intervalos ni cambios en HasScheduleConflictAsync. No se creó ni aplicó una migración.

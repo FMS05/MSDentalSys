@@ -16,6 +16,20 @@ public class SubserviciosController(ApplicationDbContext context) : Controller
 {
     private const string DuplicateMessage = "Ya existe un subservicio con ese nombre en el servicio seleccionado, incluso si está inactivo.";
 
+    [HttpGet, Authorize(Roles = "Administrador,Recepcionista")]
+    public async Task<IActionResult> ParaCitas(int servicioOdontologicoId)
+    {
+        if (!await context.ServiciosOdontologicos.AsNoTracking()
+            .AnyAsync(s => s.ServicioOdontologicoId == servicioOdontologicoId && s.Estado))
+            return NotFound();
+
+        return Json(await context.SubserviciosOdontologicos.AsNoTracking()
+            .Where(s => s.ServicioOdontologicoId == servicioOdontologicoId && s.Estado)
+            .OrderBy(s => s.Nombre)
+            .Select(s => new { s.SubservicioOdontologicoId, s.Nombre, s.DuracionEstimadaMinutos })
+            .ToListAsync());
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index(int? servicioId) => View(await context.SubserviciosOdontologicos
         .Include(s => s.ServicioOdontologico).AsNoTracking()

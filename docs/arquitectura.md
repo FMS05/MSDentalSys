@@ -218,7 +218,17 @@ ServicioOdontologico tiene una relación 1:N con SubservicioOdontologico. Cada p
 
 Cita conserva ServicioOdontologicoId y agrega SubservicioOdontologicoId y DuracionProgramadaMinutos nullable, sin valores por defecto ni backfill. Una FK compuesta garantiza la pertenencia del subservicio al servicio; las eliminaciones son Restrict. Los CHECK validan duraciones y el índice único (ServicioOdontologicoId, Nombre) incluye inactivos. Las comparaciones de nombres conservan la collation del proveedor y Trim del formulario.
 
-Estas columnas solo preparan el esquema: Create Cita, Reschedule, H3 y H4 no cambian. H8 todavía NO está activo. Las citas históricas y las nuevas de esta fase pueden seguir sin subservicio ni duración. La duración del servicio principal permanece sin cambios por compatibilidad. Tratamiento continúa asociado al servicio principal.
+En Fase A estas columnas prepararon el esquema y permitieron citas sin subservicio ni duración. La duración del servicio principal permanece sin cambios por compatibilidad. Tratamiento continúa asociado al servicio principal.
+
+### Integración de citas — Fase B
+
+Las nuevas citas requieren SubservicioOdontologicoId en CitaFormViewModel. GET Create carga odontólogos y servicios activos, sin consultar todos los subservicios. GET /Subservicios/ParaCitas?servicioOdontologicoId={id}, autorizado para Administrador y Recepcionista, devuelve únicamente ID, nombre y duración de hijos activos ordenados por nombre; devuelve 404 si el servicio no existe o está inactivo.
+
+POST Create verifica en BD servicio activo, subservicio activo, pertenencia exacta y duración entre 1 y 1440 minutos, además de paciente, odontólogo y conflicto H4. Copia la duración del catálogo a DuracionProgramadaMinutos; el ViewModel no admite duración del cliente. Un POST inválido reconstruye las opciones del servicio y conserva únicamente selecciones válidas. Las citas históricas pueden conservar NULL; Details muestra «No registrado».
+
+El script dedicado citas-subservicios.js mantiene separado el selector dependiente del autocomplete existente: limpia la selección al cambiar servicio, cancela con AbortController y comprueba tanto la petición vigente como el servicio actual antes de aplicar resultados o errores. Index conserva sus seis columnas; el procedimiento y snapshot se consultan en Details.
+
+Reagendar solo cambia fecha/hora y conserva servicio, subservicio y snapshot incluso después de modificar el catálogo. No hay nueva migración. H3/H4 permanecen intactos: HasScheduleConflictAsync sigue usando mismo odontólogo + mismo inicio + estado distinto de Cancelada. H8 y la detección de intervalos siguen pendientes.
 
 La carga inicial se solicita desde Subservicios/Index mediante POST LoadInitialCatalog, solo Administrador y con antiforgery. No se ejecuta en Program ni automáticamente al iniciar. Requiere que los 10 servicios padre del catálogo existan una sola vez y estén activos para las entradas pendientes. Ante padre inexistente, ambiguo o inactivo se revierte toda la carga y se informa el problema; no se crean padres arbitrariamente.
 
