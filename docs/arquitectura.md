@@ -242,7 +242,7 @@ ClasificacionSubservicio se define en Data/Models con Principal = 1 y Complement
 
 El ViewModel requiere clasificación y SubserviciosController valida explícitamente los dos valores permitidos tanto en Create como en Edit. Edit GET permite históricos NULL; guardar exige clasificarlos. El selector compartido en _Fields sirve a Create/Edit y Details muestra «Sin clasificar» para NULL. Index conserva sus cinco columnas para no ensanchar la tabla compartida con Details de Servicios; la clasificación se consulta en Details del subservicio.
 
-El seeder provisional permanece intacto y crea sus registros con NULL; no se asigna clasificación masivamente. Activación, autorización y selección para Citas conservan su comportamiento, sin filtros por clasificación. No cambian duración, códigos, FK compuesta, snapshot de citas, Reagendar ni H3/H4. El catálogo definitivo de procedimientos y H8 siguen pendientes.
+El seeder provisional permanece intacto y crea sus registros con NULL; no se asigna clasificación masivamente. Activación, autorización y selección para Citas conservan su comportamiento, sin filtros por clasificación. No cambian duración, códigos, FK compuesta, snapshot de citas, Reagendar ni H3/H4. Esta fase no carga procedimientos; H8 sigue pendiente.
 
 ### Servicios definitivos — Fase 2A
 
@@ -250,4 +250,14 @@ ServicioCatalogoSeeder contiene las 12 categorías objetivo. POST Servicios/Prep
 
 Tras validar todo, conserva IDs, fechas, descripciones y duración legacy; normaliza nombres y activa los objetivos, creando solo los ausentes con los defaults de la entidad. La segunda ejecución devuelve que el catálogo ya está actualizado. Se utiliza transacción Serializable desde la lectura hasta el commit para impedir duplicados entre cargas concurrentes; un conflicto de BD aborta con mensaje controlado. Ante cualquier fallo se hace rollback y se limpia el tracking. No se modifican relaciones, subservicios, citas ni tratamientos.
 
-La conciliación conserva 1 Periodoncia, 2 Odontología general, 3 Endodoncia, 4 Cirugía oral y 5 Rehabilitación oral / Prótesis. Completa con Odontología estética, Implantología, Ortodoncia, Odontopediatría, Odontología preventiva, Odontología digital y Odontología para pacientes con necesidades especiales. Los 139 procedimientos, códigos y duraciones definitivos se incorporarán en Fase 2B; no se han cargado aquí.
+La conciliación conserva 1 Periodoncia, 2 Odontología general, 3 Endodoncia, 4 Cirugía oral y 5 Rehabilitación oral / Prótesis. Completa con Odontología estética, Implantología, Ortodoncia, Odontopediatría, Odontología preventiva, Odontología digital y Odontología para pacientes con necesidades especiales. Esta operación prepara solamente servicios; la Fase 2B incorpora el cargador separado de procedimientos.
+
+### Procedimientos definitivos — Fase 2B
+
+Data/InitialData/SubservicioCatalogo.cs contiene 139 entradas inmutables con códigos explícitos permanentes, padre, nombre, descripción, clasificación y minutos. No se generan códigos a partir de la posición. SubservicioCatalogoSeeder valida 139 códigos únicos y completos, 85 Principal/54 Complementario, nombres/descripciones con límites del modelo, pares padre/nombre únicos y duración 1–1440 antes de iniciar la carga.
+
+La transacción Serializable abarca lectura, validación, conciliación y commit. Comprueba los 12 padres activos de Fase 2A, incluidos sus IDs históricos; valida subservicios 1–5, códigos y colisiones de nombre mediante consultas con la collation de BD, incluidos inactivos. IDs 1/3 solo aceptan su identidad histórica aprobada o su código definitivo en el mismo ID. IDs 2/4/5 deben conservar nombre, padre, duración, clasificación NULL y código NULL; solo se inactivan. Registros ajenos al conjunto aprobado provocan aborto para evitar mezclar catálogos. Ante fallo se revierte todo y se limpia el tracking.
+
+Para códigos ya conocidos se exige padre y nombre compatibles: no se trasladan códigos ni se cambian IDs. La política conservadora rechaza diferencias de nombre; descripción, clasificación, minutos y estado pueden reconciliarse. Las dos conversiones históricas autorizadas sí cambian nombre y asignan código. Se conservan fechas e IDs; no hay actualizaciones de Cita ni Tratamiento. El nombre mostrado en citas históricas refleja el nuevo nombre del catálogo en IDs 1/3; su snapshot de duración permanece intacto.
+
+Subservicios/PrepareDefinitiveCatalog es POST de Administrador con antiforgery, mensajes controlados y botón temporal. El botón de servicios 2A permanece; el POST provisional continúa deshabilitado. No se ejecuta desde Program, no hay migración, SQL manual ni eliminación física. Las duraciones son bloques operativos de agenda, no tiempos clínicos obligatorios. Las relaciones, selección Servicio → Subservicio, Reagendar y H3/H4 no cambian; H8 continúa pendiente.
