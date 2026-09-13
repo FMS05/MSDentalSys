@@ -20,6 +20,56 @@ public class UsuariosControllerTests
 
     [Theory]
     [InlineData(null)]
+    [InlineData("  recepcion  ")]
+    [InlineData("sin-coincidencias")]
+    public async Task Index_AsociaRolesYConservaOrdenFiltroYDatos(string? term)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var doctor = await db.CreateUserAsync("doctor@example.test", "Odontologo", "Zoe", "Zulu");
+        var reception = await db.CreateUserAsync("recepcion@example.test", "Recepcionista", "Ana", "Alfa", false);
+        reception.PhoneNumber = "8095550101";
+        await db.Context.SaveChangesAsync();
+        var result = Assert.IsType<ViewResult>(await db.CreateController().Index(term));
+        var model = Assert.IsType<UsuariosIndexViewModel>(result.Model);
+        Assert.Equal(term, model.SearchTerm);
+        if (term == "sin-coincidencias") { Assert.Empty(model.Usuarios); return; }
+        Assert.Equal(term is null ? 2 : 1, model.Usuarios.Count);
+        var first = model.Usuarios.First();
+        Assert.Equal(reception.Id, first.Id);
+        Assert.Equal("Ana Alfa", first.NombreCompleto);
+        Assert.Equal(reception.Email, first.Email);
+        Assert.Equal(reception.PhoneNumber, first.Telefono);
+        Assert.Equal("Recepcionista", first.Rol);
+        Assert.False(first.Estado);
+        Assert.False(first.EsAdministradorInicial);
+        if (term is null)
+        {
+            Assert.Equal(doctor.Id, model.Usuarios.Last().Id);
+            Assert.Equal("Odontologo", model.Usuarios.Last().Rol);
+        }
+    }
+
+    [Fact]
+    public async Task Index_SinRolYMultiplesRoles_ConservaRepresentacionDeUnRol()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var without = await db.CreateUserAsync("sin@example.test", "Recepcionista", "Sin", "Rol");
+        Assert.True((await db.UserManager.RemoveFromRoleAsync(without, "Recepcionista")).Succeeded);
+        var multiple = await db.CreateUserAsync("admin@msdentalsys.local", "Administrador", "Admin", "Inicial");
+        Assert.True((await db.UserManager.AddToRoleAsync(multiple, "Odontologo")).Succeeded);
+        var assigned = await db.UserManager.GetRolesAsync(multiple);
+        var result = Assert.IsType<ViewResult>(await db.CreateController().Index(null));
+        var model = Assert.IsType<UsuariosIndexViewModel>(result.Model);
+        Assert.Equal("Sin rol", model.Usuarios.Single(u => u.Id == without.Id).Rol);
+        var item = model.Usuarios.Single(u => u.Id == multiple.Id);
+        // Identity does not specify role order; Index still displays one assigned role.
+        Assert.Contains(item.Rol, assigned);
+        Assert.True(item.EsAdministradorInicial);
+        Assert.Equal(2, (await db.UserManager.GetRolesAsync(multiple)).Count);
+    }
+
+    [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("correo-invalido")]

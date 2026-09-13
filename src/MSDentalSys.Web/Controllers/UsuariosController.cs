@@ -44,10 +44,16 @@ namespace MSDentalSys.Web.Controllers
                 .ToListAsync();
 
             var userItems = new List<UsuarioListItemViewModel>(users.Count);
+            var userIds = users.Select(user => user.Id).ToArray();
+            var roleRows = await (from membership in _context.UserRoles.AsNoTracking()
+                                  join role in _context.Roles.AsNoTracking() on membership.RoleId equals role.Id
+                                  where userIds.Contains(membership.UserId)
+                                  select new { membership.UserId, role.Name }).ToListAsync();
+            var rolesByUser = roleRows.ToLookup(row => row.UserId, row => row.Name);
 
             foreach (var user in users)
             {
-                var roles = await _userManager.GetRolesAsync(user);
+                var roles = rolesByUser[user.Id];
                 userItems.Add(new UsuarioListItemViewModel
                 {
                     Id = user.Id,
