@@ -5,15 +5,13 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
-using MSDentalSys.Data.InitialData;
-using System.Data.Common;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Models.ViewModels;
 
 namespace MSDentalSys.Web.Controllers;
 
 [Authorize(Roles = "Administrador,Recepcionista,Odontologo")]
-public class SubserviciosController(ApplicationDbContext context, ILogger<SubserviciosController> logger) : Controller
+public class SubserviciosController(ApplicationDbContext context) : Controller
 {
     private const string DuplicateMessage = "Ya existe un subservicio con ese nombre en el servicio seleccionado, incluso si está inactivo.";
 
@@ -131,34 +129,6 @@ public class SubserviciosController(ApplicationDbContext context, ILogger<Subser
         await context.SaveChangesAsync();
         TempData["SuccessMessage"] = state ? "Subservicio activado correctamente." : "Subservicio desactivado correctamente.";
         return RedirectToAction(nameof(Details), new { id });
-    }
-
-    [HttpPost, Authorize(Roles = "Administrador"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> PrepareDefinitiveCatalog()
-    {
-        try
-        {
-            var changed = await SubservicioCatalogoSeeder.SeedAsync(context);
-            TempData["SuccessMessage"] = changed
-                ? "El catálogo odontológico definitivo fue cargado correctamente."
-                : "El catálogo odontológico definitivo ya se encuentra actualizado.";
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or DbException)
-        {
-            if (ex is SubservicioCatalogoSeeder.CatalogoValidationException)
-                logger.LogWarning("Carga del catálogo definitivo abortada: {Motivo}", ex.Message);
-            else
-                logger.LogError("Carga del catálogo definitivo abortada por {TipoError}. Se omitieron detalles del proveedor para proteger datos sensibles.", ex.GetType().Name);
-            TempData["ErrorMessage"] = "No se pudo cargar el catálogo definitivo. Revisa los servicios, las identidades históricas y las colisiones de nombres o códigos. No se aplicaron cambios.";
-        }
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost, Authorize(Roles = "Administrador"), ValidateAntiForgeryToken]
-    public IActionResult LoadInitialCatalog()
-    {
-        TempData["ErrorMessage"] = "La carga del catálogo provisional está deshabilitada. Utiliza la carga explícita del catálogo definitivo.";
-        return RedirectToAction(nameof(Index));
     }
 
     private void ValidateFields(SubservicioFormViewModel model)

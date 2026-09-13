@@ -6,9 +6,7 @@
     @if (User.IsInRole("Administrador"))
     {
         <div class="service-toolbar"><a asp-action="Create" class="btn btn-ms-primary">Nuevo subservicio</a>
-        <form asp-action="PrepareDefinitiveCatalog" method="post"><button type="submit" class="btn btn-outline-secondary">Cargar catálogo odontológico definitivo</button></form>
         </div>
-        <p class="text-muted">Carga explícita de los 139 procedimientos definitivos. La carga provisional está deshabilitada.</p>
     }
     <partial name="_List" model="Model" />
 </div>

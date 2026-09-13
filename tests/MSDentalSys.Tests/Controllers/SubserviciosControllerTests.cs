@@ -412,7 +412,7 @@ public partial class SubserviciosControllerTests
         public SubserviciosController Controller()
         {
             var http = new DefaultHttpContext();
-            return new SubserviciosController(context, Microsoft.Extensions.Logging.Abstractions.NullLogger<SubserviciosController>.Instance) { ControllerContext = new ControllerContext { HttpContext = http }, TempData = new TempDataDictionary(http, new TempProvider()) };
+            return new SubserviciosController(context) { ControllerContext = new ControllerContext { HttpContext = http }, TempData = new TempDataDictionary(http, new TempProvider()) };
         }
         public SubservicioFormViewModel Form(int? minutes = 30) => new() { ServicioOdontologicoId = parent.ServicioOdontologicoId, Nombre = "Evaluación", DuracionEstimadaMinutos = minutes, Clasificacion = ClasificacionSubservicio.Principal };
         public async Task<SubservicioOdontologico> AddAsync()

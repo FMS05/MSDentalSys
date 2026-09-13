@@ -1,6 +1,3 @@
-using System.Net;
-using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MSDentalSys.Data.Context;
@@ -100,36 +97,4 @@ public class ServicioCatalogoTests
         }
     }
 
-    [Theory]
-    [InlineData("Administrador", HttpStatusCode.BadRequest)]
-    [InlineData("Recepcionista", HttpStatusCode.Forbidden)]
-    [InlineData("Odontologo", HttpStatusCode.Forbidden)]
-    [InlineData(null, HttpStatusCode.Redirect)]
-    public async Task Endpoint_Protegido(string? role, HttpStatusCode expected)
-    {
-        using var factory = new CustomWebApplicationFactory();
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
-        if (role is not null) client.DefaultRequestHeaders.Add("X-Test-Role", role);
-        Assert.Equal(expected, (await client.PostAsync("/Servicios/PrepareCatalog", new FormUrlEncodedContent([]))).StatusCode);
-    }
-
-    [Fact]
-    public async Task Administrador_PostReal_MensajesIdempotenciaYLegacyDeshabilitado()
-    {
-        using var factory = new CustomWebApplicationFactory(); using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(); await SeedHistory(db);
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
-        client.DefaultRequestHeaders.Add("X-Test-Role", "Administrador");
-        var html = await client.GetStringAsync("/Servicios");
-        var token = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\""); Assert.True(token.Success);
-        var form = new Dictionary<string, string> { ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value) };
-        for (var i = 0; i < 2; i++)
-        {
-            Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Servicios/PrepareCatalog", new FormUrlEncodedContent(form))).StatusCode);
-            Assert.Contains(i == 0 ? "fue preparado correctamente" : "ya se encuentra actualizado", WebUtility.HtmlDecode(await client.GetStringAsync("/Servicios")));
-        }
-        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Subservicios/LoadInitialCatalog", new FormUrlEncodedContent(form))).StatusCode);
-        Assert.Empty(await db.SubserviciosOdontologicos.ToListAsync());
-        Assert.DoesNotContain("action=\"/Subservicios/LoadInitialCatalog\"", await client.GetStringAsync("/Subservicios"));
-    }
 }

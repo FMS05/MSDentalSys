@@ -2,7 +2,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -195,33 +194,14 @@ public class SubservicioCatalogoTests
     }
 
     [Theory]
-    [InlineData("Administrador", HttpStatusCode.BadRequest)]
-    [InlineData("Recepcionista", HttpStatusCode.Forbidden)]
-    [InlineData("Odontologo", HttpStatusCode.Forbidden)]
-    [InlineData(null, HttpStatusCode.Redirect)]
-    public async Task Post_RequiereAdminYAntiforgery(string? role, HttpStatusCode expected)
-    {
-        using var factory = new CustomWebApplicationFactory(); using var client = Client(factory, role);
-        Assert.Equal(expected, (await client.PostAsync("/Subservicios/PrepareDefinitiveCatalog", new FormUrlEncodedContent([]))).StatusCode);
-    }
-
-    [Theory]
     [InlineData("Administrador")]
     [InlineData("Recepcionista")]
     [InlineData("Odontologo")]
-    public async Task Http_CargaAdmin_ConsultaYSeleccionSinLegacy(string role)
+    public async Task Http_ConsultaYSeleccionSinLegacy(string role)
     {
         using var factory = new CustomWebApplicationFactory(); using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(); await SeedHistory(db);
-        using var admin = Client(factory, "Administrador");
-        var html = await admin.GetStringAsync("/Subservicios");
-        var token = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\""); Assert.True(token.Success);
-        for (var i = 0; i < 2; i++)
-        {
-            var response = await admin.PostAsync("/Subservicios/PrepareDefinitiveCatalog", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value) }));
-            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-            Assert.Contains(i == 0 ? "fue cargado correctamente" : "ya se encuentra actualizado", WebUtility.HtmlDecode(await admin.GetStringAsync("/Subservicios")));
-        }
+        await SubservicioCatalogoSeeder.SeedAsync(db);
         using var client = Client(factory, role);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Subservicios")).StatusCode);
         Assert.Contains("Raspado y pulido dental", await client.GetStringAsync("/Subservicios/Details/2"));

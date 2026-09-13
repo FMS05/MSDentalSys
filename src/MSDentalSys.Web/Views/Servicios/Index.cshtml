@@ -29,12 +29,6 @@
     </div>
 
     <div class="service-toolbar">
-        @if (User.IsInRole("Administrador"))
-        {
-            <form asp-action="PrepareCatalog" method="post">
-                <button type="submit" class="btn btn-outline-secondary">Preparar los 12 servicios definitivos</button>
-            </form>
-        }
         <form asp-action="Index" method="get" class="service-search-form" autocomplete="off">
             <div class="service-search-input">
                 <span aria-hidden="true">&#128269;</span>

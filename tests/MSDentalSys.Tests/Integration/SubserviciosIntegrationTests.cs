@@ -40,7 +40,7 @@ public partial class SubserviciosIntegrationTests
         var id = await SeedAsync(factory); using var client = Client(factory, role);
         foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}" })
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(route)).StatusCode);
-        foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}", $"/Subservicios/Activate/{id}", $"/Subservicios/Deactivate/{id}", "/Subservicios/LoadInitialCatalog" })
+        foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}", $"/Subservicios/Activate/{id}", $"/Subservicios/Deactivate/{id}" })
             Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync(route, new FormUrlEncodedContent([]))).StatusCode);
     }
 
@@ -51,7 +51,7 @@ public partial class SubserviciosIntegrationTests
         var id = await SeedAsync(factory); using var client = Client(factory, "Administrador");
         foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}" })
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(route)).StatusCode);
-        foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}", $"/Subservicios/Activate/{id}", $"/Subservicios/Deactivate/{id}", "/Subservicios/LoadInitialCatalog" })
+        foreach (var route in new[] { "/Subservicios/Create", $"/Subservicios/Edit/{id}", $"/Subservicios/Activate/{id}", $"/Subservicios/Deactivate/{id}" })
             Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync(route, new FormUrlEncodedContent([]))).StatusCode);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

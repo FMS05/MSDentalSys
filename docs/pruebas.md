@@ -125,12 +125,22 @@ La migración AddClasificacionToSubservicios se generó y revisó junto con el s
 
 Baseline 403 pruebas; 415 aprobadas, 0 fallidas, 0 omitidas. ServicioCatalogoTests agrega 12 casos: conciliación de los cinco IDs, siete altas, 12 activos, idempotencia, conservación de duración legacy/fechas y referencias de citas, tratamientos y subservicios, sin alterar código/clasificación/duración del procedimiento. También cubre identidad incompatible, ID ausente, duplicado activo/inactivo y servicio ajeno, verificando ausencia de cambios parciales.
 
-Un interceptor provoca un fallo después de SaveChanges y antes del commit para comprobar rollback real en SQLite. Las pruebas HTTP comprueban autorización, antiforgery, mensajes de primera/segunda carga y deshabilitación efectiva del POST provisional. Las pruebas previas H3/H4 permanecen aprobadas. Build: 0 errores y 0 advertencias. No se ejecutó la conciliación en la BD de desarrollo; no hay migración ni carga de los 139 procedimientos.
+Un interceptor provoca un fallo después de SaveChanges y antes del commit para comprobar rollback real en SQLite. Las pruebas HTTP de autorización, antiforgery y mensajes de carga temporal pertenecían a la implantación y se sustituyeron por pruebas de ausencia de esas acciones al cerrar el proceso. Las pruebas previas H3/H4 permanecen aprobadas. Build: 0 errores y 0 advertencias. No se ejecutó la conciliación en la BD de desarrollo; no hay migración ni carga de los 139 procedimientos.
 
 ## Procedimientos definitivos — Fase 2B
+
+Los resultados por fase siguientes son históricos; la validación del cierre se indica al final.
 
 Baseline 415; resultado 444 pruebas aprobadas, 0 fallidas y 0 omitidas. Se agregan 29 casos en SubservicioCatalogoTests. Build con 0 errores y 0 advertencias. No se ejecuta la carga en la BD de desarrollo.
 
 La fuente se contrasta mediante SHA-256 de una representación canónica calculada independientemente desde la especificación aprobada, incluidos todos los nombres, padres, códigos, descripciones, clasificaciones y duraciones. Doce casos verifican primer/último código y ambas clasificaciones por servicio. La carga relacional verifica cada campo de los 139 procedimientos, 142 filas totales, IDs 1/3 reutilizados, tres legados preservados/inactivos, 85/54, repetición sin cambios de IDs/fechas y conservación de citas/snapshots. Se prueba reconciliación de configuración de un código ya conocido sin alterar citas.
 
-Se cubren padre/código incompatible, nombre duplicado, protección UNIQUE de códigos, identidad histórica incompatible, servicio inactivo y registros ajenos; un fallo después de SaveChanges y antes de commit comprueba rollback completo. HTTP verifica Administrador, rechazo de Recepcionista/Odontólogo/anónimo, antiforgery, mensajes de primera/segunda ejecución, consultas por los roles actuales, Details legacy y ParaCitas para los 12 servicios con duración correcta y exclusión de inactivos. Las pruebas anteriores H3/H4 siguen aprobadas. No se modifica Citas ni se implementa H8.
+Se cubren padre/código incompatible, nombre duplicado, protección UNIQUE de códigos, identidad histórica incompatible, servicio inactivo y registros ajenos; un fallo después de SaveChanges y antes de commit comprueba rollback completo. HTTP mantiene consultas por los roles actuales, Details legacy y ParaCitas para los 12 servicios con duración correcta y exclusión de inactivos; los datos se preparan internamente en SQLite de pruebas. Las comprobaciones de endpoints temporales se sustituyeron por pruebas de ausencia de rutas. Las pruebas anteriores H3/H4 siguen aprobadas. No se modifica Citas ni se implementa H8.
+
+## Cierre de implantación del catálogo
+
+El catálogo definitivo ya está implantado. Se retiraron los controles y las acciones web PrepareCatalog, PrepareDefinitiveCatalog y LoadInitialCatalog. Los seeders definitivos y el provisional legacy permanecen internos; no se ejecutan contra la BD real en este cierre. La operación cotidiana se realiza mediante el CRUD habitual, conservando permisos.
+
+Baseline 447; resultado 444 pruebas aprobadas, 0 fallidas y 0 omitidas. Se retiraron nueve casos exclusivos de endpoints temporales y se agregaron seis en CatalogoCierreTests: cuatro verifican ausencia de las tres acciones en MVC y respuestas GET 404 / POST 405 para Administrador, Recepcionista, Odontólogo y anónimo; dos verifican Index sin controles/textos técnicos y con Nuevo servicio/Nuevo subservicio. Se conserva la cobertura interna de conciliación, exactitud del catálogo (139, 85/54), idempotencia, rollback y legados. Las consultas HTTP ahora preparan sus datos directamente con el cargador interno en SQLite aislado.
+
+Build: 0 errores y 0 advertencias; git diff --check sin errores. CRUD, selección de citas, snapshots y H3/H4 conservan sus pruebas. No hay cambios de catálogo, datos, esquema, migración, SQL manual ni H8.
