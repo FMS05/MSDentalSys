@@ -219,6 +219,24 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/Diagnosticos/Create?atencionId=1")]
+    [InlineData("/Tratamientos/Create?atencionId=1")]
+    [InlineData("/EvolucionesClinicas/Create?atencionId=1")]
+    public async Task ModulosClinicos_Recepcionista_AccesoDirectoRechazado(string url)
+    {
+        using var client = CreateClient("Recepcionista");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(url)).StatusCode);
+    }
+
+    [Fact]
+    public async Task PacientesCreatePost_Odontologo_EsRechazado()
+    {
+        using var client = CreateClient("Odontologo");
+        var response = await client.PostAsync("/Pacientes/Create", new FormUrlEncodedContent([]));
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private HttpClient CreateClient(string? role = null)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
