@@ -61,14 +61,24 @@ namespace MSDentalSys.Web.Controllers
                 return View(model);
             }
 
-            _context.Seguros.Add(new Seguro
+            var seguro = new Seguro
             {
                 Nombre = nombre,
                 Estado = true,
                 FechaCreacion = DateTime.Now
-            });
+            };
+            _context.Seguros.Add(seguro);
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (IsDuplicateNombre(exception))
+            {
+                _context.Entry(seguro).State = EntityState.Detached;
+                ModelState.AddModelError(nameof(model.Nombre), "Ya existe un seguro con ese nombre.");
+                return View(model);
+            }
             TempData["SuccessMessage"] = "Seguro médico creado correctamente.";
             return RedirectToAction(nameof(Index));
         }
@@ -114,7 +124,16 @@ namespace MSDentalSys.Web.Controllers
             }
 
             seguro.Nombre = nombre;
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (IsDuplicateNombre(exception))
+            {
+                _context.Entry(seguro).State = EntityState.Detached;
+                ModelState.AddModelError(nameof(model.Nombre), "Ya existe un seguro con ese nombre.");
+                return View(model);
+            }
             TempData["SuccessMessage"] = "Seguro médico actualizado correctamente.";
             return RedirectToAction(nameof(Details), new { id });
         }
@@ -167,6 +186,18 @@ namespace MSDentalSys.Web.Controllers
             {
                 ModelState.AddModelError(nameof(SeguroFormViewModel.Nombre), "Ya existe un seguro con ese nombre.");
             }
+        }
+
+        private static bool IsDuplicateNombre(DbUpdateException exception)
+        {
+            if (exception.InnerException is Microsoft.Data.SqlClient.SqlException sql)
+                return sql.Errors.Cast<Microsoft.Data.SqlClient.SqlError>().Any(error =>
+                    error.Number is 2601 or 2627 &&
+                    error.Message.Contains("'IX_Seguros_Nombre'", StringComparison.Ordinal));
+
+            return exception.InnerException is Microsoft.Data.Sqlite.SqliteException
+                { SqliteErrorCode: 19, SqliteExtendedErrorCode: 2067 } sqlite &&
+                sqlite.Message.Contains("UNIQUE constraint failed: Seguros.Nombre'", StringComparison.Ordinal);
         }
 
         private static SeguroFormViewModel ToViewModel(Seguro seguro)
