@@ -36,6 +36,18 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 - **Cédula (incluida en Pacientes)**: 14 casos nuevos verifican cumpleaños 18 mañana sin cédula, dos formatos completos normalizados, cinco entradas inválidas (incluida una voluntaria de menor), dos duplicados equivalentes en Create, dos ediciones de la cédula propia y dos duplicados en Edit, incluyendo registros históricos sin guiones. Se mantienen los casos existentes de menores, adultos y cumpleaños 18 hoy. El servidor rechaza letras, exceso, entradas incompletas y guiones incorrectos antes de persistir.
 - **HTML de formulario de pacientes**: dos casos en `Integration/PacienteFormTests.cs` revisan Create/Edit mediante la Web real con SQLite en memoria: campo de texto, `inputmode="numeric"`, máximo visual 13, obligatoriedad no incondicional, elementos auxiliares y carga del script compartido. No ejecutan JavaScript. Este punto añade 16 casos: de 196 a 212.
 - **Citas**: creación, autocomplete de pacientes activos, conflictos de horario, reagendamiento y estados finales.
+
+  H9: los autocomplete de Create e Index invalidan inmediatamente y abortan las búsquedas previas mediante AbortController, antes del debounce de 300 ms. Solo la petición activa cuyo término coincide con el texto actual puede renderizar o limpiar por error; AbortError se ignora. Seleccionar un paciente o hacer clic fuera también cancela lo pendiente. Create conserva la invalidación de PacienteId a `0`; Index conserva pacienteId vacío y su guarda de submit.
+
+  Validación manual completada satisfactoriamente en **Create e Index**, según confirmación del usuario. Se conserva la lista de escenarios para futuras regresiones:
+  - Escribir «Mar», esperar que salga A, escribir «Maria» y resolver B antes de A: B debe permanecer visible. Verificar el aborto de A y, simulando una respuesta que aun así complete, la guarda de vigencia.
+  - Vaciar el campo (también dejar solo espacios) con una petición pendiente: no se inicia otra búsqueda y la lista permanece cerrada.
+  - Seleccionar un paciente con trabajo pendiente: se conservan nombre e ID y la lista no reaparece. Como escribir cierra las opciones inmediatamente, este intercalado puede necesitar respuestas controladas o una pausa del depurador.
+  - Seleccionar y después editar el texto: Create deja `PacienteId = 0`; Index deja `pacienteId = ''`.
+  - Hacer clic fuera mientras se busca: la lista no reaparece y nombre e ID no cambian.
+  - Un aborto o error de A después de resultados de B no debe borrarlos ni mostrar errores técnicos. Comprobar además el mensaje vacío de Create, la lista oculta sin coincidencias de Index, Filtrar y Limpiar filtros.
+
+  La infraestructura actual valida servidor y HTTP/Razor, pero no ejecuta JavaScript. La suite existente no demuestra estos intercalados; no se agregan pruebas que solo busquen fragmentos del código ni un framework nuevo.
 - **Usuarios**: creación, roles, duplicidad de correo, cambio de rol y estados.
 - **Servicios**: creación, edición, activación/desactivación y búsquedas.
 - **Dashboard**: conteos generales y filtrado de citas para odontólogos.
