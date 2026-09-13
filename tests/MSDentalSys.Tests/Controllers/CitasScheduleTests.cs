@@ -69,11 +69,10 @@ public partial class CitasControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Horario_DosContextosVenLibre_SegundaEscrituraDevuelveFormulario(bool loserReschedules, bool winnerReschedules)
+    public async Task Horario_GanadorAntesDeTransaccion_SegundaSolicitudDevuelveFormulario(bool loserReschedules, bool winnerReschedules)
     {
-        var saveGate = new ScheduleSaveGate();
-        var updateGate = new ScheduleUpdateGate();
-        await using var database = await TestDatabase.CreateAsync(saveGate, updateGate);
+        var gate = new BeforeScheduleTransaction();
+        await using var database = await TestDatabase.CreateAsync(gate);
         await database.AddSupportDataAsync();
         var loser = database.CreateAppointment(ScheduleStart.AddHours(-1));
         var winner = database.CreateAppointment(ScheduleStart.AddHours(-2));
@@ -84,7 +83,7 @@ public partial class CitasControllerTests
         Assert.False(await a.Citas.AnyAsync(x => x.OdontologoId == database.OdontologistId && x.FechaHoraInicio == ScheduleStart && x.EstadoCita != "Cancelada"));
         var winnerOriginal = await a.Citas.SingleAsync(x => x.CitaId == winner.CitaId);
 
-        // B ya comprobó disponibilidad cuando llega a guardar; A confirma antes de su escritura.
+        // A confirma antes de la transacción de B. La carrera real entre conexiones se prueba en SQL Server.
         var invoked = false;
         async Task Win()
         {
@@ -93,8 +92,7 @@ public partial class CitasControllerTests
             else a.Citas.Add(database.CreateAppointment(ScheduleStart));
             await a.SaveChangesAsync();
         }
-        if (loserReschedules) updateGate.BeforeWrite = Win;
-        else saveGate.BeforeWrite = Win;
+        gate.Callback = Win;
         var controller = database.CreateController("Administrador");
         IActionResult result;
         if (loserReschedules)
@@ -107,7 +105,7 @@ public partial class CitasControllerTests
         }
         Assert.True(invoked);
         var view = Assert.IsType<ViewResult>(result);
-        Assert.Contains("Otra operación reservó", Assert.Single(controller.ModelState["FechaHoraInicio"]!.Errors).ErrorMessage);
+        Assert.Contains("se superpone", Assert.Single(controller.ModelState["FechaHoraInicio"]!.Errors).ErrorMessage);
         Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
         if (!loserReschedules)
         {
@@ -151,6 +149,33 @@ public partial class CitasControllerTests
         Assert.Same(expected, error);
         Assert.True(controller.ModelState.IsValid);
         Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task H4_ErrorIndiceDuranteEscritura_RevierteYDevuelveFormulario(bool reschedule)
+    {
+        var save = new ScheduleSaveGate();
+        var update = new ScheduleUpdateGate();
+        await using var db = await TestDatabase.CreateAsync(save, update);
+        await db.AddSupportDataAsync();
+        var cita = db.CreateAppointment(ScheduleStart.AddDays(1));
+        cita.DuracionProgramadaMinutos = 60;
+        db.Context.Add(cita);
+        await db.Context.SaveChangesAsync();
+        var error = new SqliteException("SQLite Error 19: 'UNIQUE constraint failed: Citas.OdontologoId, Citas.FechaHoraInicio'.", 19, 2067);
+        save.BeforeWrite = () => throw new DbUpdateException("Duplicate", error);
+        update.BeforeWrite = () => throw error;
+        var controller = db.CreateController();
+        var result = reschedule
+            ? await controller.Reschedule(cita.CitaId, new ReagendarCitaViewModel { CitaId = cita.CitaId, FechaHoraInicio = ScheduleStart })
+            : await controller.Create(db.CreateAppointmentModel(ScheduleStart));
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("Otra operación reservó"));
+        Assert.DoesNotContain(db.Context.ChangeTracker.Entries(), e => e.State == EntityState.Added);
+        db.Context.ChangeTracker.Clear();
+        Assert.Equal(ScheduleStart.AddDays(1), (await db.Context.Citas.SingleAsync()).FechaHoraInicio);
     }
 
     private sealed class ScheduleSaveGate : SaveChangesInterceptor

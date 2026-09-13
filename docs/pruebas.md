@@ -111,7 +111,7 @@ Validación final: 375 pruebas aprobadas, 0 fallidas y 0 omitidas; dotnet build 
 
 Cobertura: permisos HTTP del endpoint (Administrador/Recepcionista, anónimo y otros roles), servicio inexistente/inactivo, filtrado de hijos activos, orden y contrato JSON mínimo; subservicio requerido, inexistente, inactivo o de otro servicio, duración fuera de rango y desactivación entre GET y POST. Se comprueba reconstrucción del formulario, snapshot desde BD, duración manipulada por HTTP ignorada, cambios posteriores del catálogo, nueva cita con nueva duración y conservación al reagendar. Details se verifica con procedimiento y con datos históricos NULL.
 
-La integración verifica el markup y la entrega del script con limpieza, cancelación y guardas de respuestas obsoletas. No ejecuta JavaScript en un navegador ni simula la red con E2E; no se incorporó un framework de navegador. H8 sigue pendiente, sin intervalos ni cambios en HasScheduleConflictAsync. No se creó ni aplicó una migración.
+La integración verifica el markup y la entrega del script con limpieza, cancelación y guardas de respuestas obsoletas. No ejecuta JavaScript en un navegador ni simula la red con E2E; no se incorporó un framework de navegador. En esa fase H8 seguía pendiente, sin intervalos ni cambios en HasScheduleConflictAsync. No se creó ni aplicó una migración.
 
 ## Clasificación de subservicios — Fase 1
 
@@ -144,3 +144,12 @@ El catálogo definitivo ya está implantado. Se retiraron los controles y las ac
 Baseline 447; resultado 444 pruebas aprobadas, 0 fallidas y 0 omitidas. Se retiraron nueve casos exclusivos de endpoints temporales y se agregaron seis en CatalogoCierreTests: cuatro verifican ausencia de las tres acciones en MVC y respuestas GET 404 / POST 405 para Administrador, Recepcionista, Odontólogo y anónimo; dos verifican Index sin controles/textos técnicos y con Nuevo servicio/Nuevo subservicio. Se conserva la cobertura interna de conciliación, exactitud del catálogo (139, 85/54), idempotencia, rollback y legados. Las consultas HTTP ahora preparan sus datos directamente con el cargador interno en SQLite aislado.
 
 Build: 0 errores y 0 advertencias; git diff --check sin errores. CRUD, selección de citas, snapshots y H3/H4 conservan sus pruebas. No hay cambios de catálogo, datos, esquema, migración, SQL manual ni H8.
+# H8 — intervalos y concurrencia
+
+`CitasOverlapTests` cubre Create/Reagendar, contención parcial/total, contigüidad, otro odontólogo, todos los estados, NULL en cualquiera o ambas duraciones, medianoche, 1/1440 minutos, límites DateTime, reconstrucción del formulario y exclusión propia con snapshot preservado. Se conserva la suite H3/H4. Las simulaciones SQLite de ganador previo confirman antes de comenzar la transacción compartida; no se presentan como evidencia de concurrencia SQL Server.
+
+`CitasSqlServerOverlapTests` prepara Create/Create, Create/Reagendar y Reagendar/Reagendar con conexiones y contextos independientes y una barrera después de las consultas de rango Serializable. Exige una sola reserva y una respuesta controlada para la perdedora, preservando fechas/snapshots. No configura retries.
+
+Por defecto esta teoría se omite. Para ejecutarla, establecer explícitamente `MSDENTALSYS_H8_SQLSERVER` con una conexión a `Initial Catalog=master` de un **servidor exclusivo de pruebas**, con permiso para crear/eliminar bases, y ejecutar `dotnet test --filter H8_SqlServer`. No se leen appsettings ni se utiliza MSDentalSysDB. El test genera una base `MSDentalSys_H8Tests_<GUID>`, crea el esquema con EnsureCreated y elimina únicamente esa base en finally. Una interrupción del proceso puede dejar esa base temporal pendiente de limpieza. No colocar credenciales en el repositorio.
+
+La ejecución local sin esa variable verifica SQLite y omite la teoría SQL Server (tres combinaciones). Con configuración explícita se validaron los tres casos en SQL Server real: 497 pruebas normales y 3 casos SQL Server aprobados, 0 fallidos y 0 omitidos. Las sondas verifican disponibilidad y escritura en la misma transacción Serializable, commit posterior y deadlock 1205 controlado incluso con las envolturas de EF Core. Todas las bases temporales fueron eliminadas. No se utilizó MSDentalSysDB. Build: 0 errores y 0 advertencias.

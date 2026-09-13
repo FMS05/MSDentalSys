@@ -56,12 +56,12 @@ public class EstadoConcurrencyTests
         await using var a = db.Context();
         var original = await a.Citas.SingleAsync();
         var initialDate = original.FechaHoraInicio;
-        var gate = new BeforeUpdate(async () =>
+        var gate = new BeforeScheduleTransaction { Callback = async () =>
         {
             if (winner == "Reagendada") original.FechaHoraInicio = initialDate.AddDays(1);
             else original.EstadoCita = winner;
             await a.SaveChangesAsync();
-        });
+        }};
         await using var b = db.Context(gate);
         var controller = Setup(new CitasController(b, null!));
         await controller.Reschedule(db.CitaId, new ReagendarCitaViewModel
@@ -69,7 +69,8 @@ public class EstadoConcurrencyTests
             CitaId = db.CitaId, FechaHoraInicio = initialDate.AddDays(2)
         });
 
-        AssertConflict(controller, gate);
+        Assert.True(gate.Invoked);
+        Assert.Contains("Otra operación", controller.TempData["ErrorMessage"]?.ToString());
         await using var c = db.Context();
         var stored = await c.Citas.SingleAsync();
         Assert.Equal(winner == "Reagendada" ? "Pendiente" : winner, stored.EstadoCita);

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,8 @@ namespace MSDentalSys.Web.Controllers
     {
         private const string ScheduleIndexName = "UX_Citas_Odontologo_FechaHoraInicio_NoCancelada";
         private const string ScheduleConflictMessage = "Otra operación reservó ese horario para el odontólogo. Selecciona otra fecha u hora y vuelve a intentarlo.";
+        private const string OverlapMessage = "El horario seleccionado se superpone con otra cita del odontólogo. Selecciona una hora diferente.";
+        private const string ScheduleBusyMessage = "Otra operación está modificando la agenda. Vuelve a intentarlo.";
         private static readonly string[] EstadosPermitidos =
         [
             "Pendiente",
@@ -189,42 +192,57 @@ namespace MSDentalSys.Web.Controllers
                 ModelState.AddModelError(nameof(model.ServicioOdontologicoId), "El servicio seleccionado no existe o está inactivo.");
             }
 
-            if (await HasScheduleConflictAsync(model.OdontologoId, model.FechaHoraInicio, null))
-            {
-                ModelState.AddModelError(nameof(model.FechaHoraInicio), "El odontólogo ya tiene otra cita en esa fecha y hora.");
-            }
-
             if (!ModelState.IsValid)
             {
                 await LoadFormOptionsAsync(model);
                 return View(model);
             }
 
-            _context.Citas.Add(new Cita
+            if (!IsValidInterval(model.FechaHoraInicio, subservicio!.DuracionEstimadaMinutos))
             {
-                PacienteId = model.PacienteId,
-                OdontologoId = model.OdontologoId,
-                ServicioOdontologicoId = model.ServicioOdontologicoId,
-                SubservicioOdontologicoId = subservicio!.SubservicioOdontologicoId,
-                DuracionProgramadaMinutos = subservicio.DuracionEstimadaMinutos,
-                FechaHoraInicio = model.FechaHoraInicio,
-                EstadoCita = "Pendiente",
-                Observaciones = NullIfWhiteSpace(model.Observaciones),
-                FechaCreacion = DateTime.Now
-            });
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), "La fecha y duración seleccionadas exceden el rango permitido.");
+                await LoadFormOptionsAsync(model);
+                return View(model);
+            }
 
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                if (await HasScheduleConflictAsync(model.OdontologoId, model.FechaHoraInicio, subservicio.DuracionEstimadaMinutos, null))
+                {
+                    await transaction.RollbackAsync();
+                    ModelState.AddModelError(nameof(model.FechaHoraInicio), OverlapMessage);
+                    await LoadFormOptionsAsync(model);
+                    return View(model);
+                }
+
+                _context.Citas.Add(new Cita
+                {
+                    PacienteId = model.PacienteId,
+                    OdontologoId = model.OdontologoId,
+                    ServicioOdontologicoId = model.ServicioOdontologicoId,
+                    SubservicioOdontologicoId = subservicio!.SubservicioOdontologicoId,
+                    DuracionProgramadaMinutos = subservicio.DuracionEstimadaMinutos,
+                    FechaHoraInicio = model.FechaHoraInicio,
+                    EstadoCita = "Pendiente",
+                    Observaciones = NullIfWhiteSpace(model.Observaciones),
+                    FechaCreacion = DateTime.Now
+                });
+
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
-            catch (DbUpdateException ex) when (IsScheduleConflict(ex.InnerException))
+            catch (Exception ex) when (IsScheduleConflict(ex is DbUpdateException update ? update.InnerException : ex) || IsScheduleDeadlock(ex))
             {
+                // SQL Server ya revirtió la transacción víctima de un deadlock.
+                if (!IsScheduleDeadlock(ex)) await transaction.RollbackAsync();
+                await transaction.DisposeAsync();
                 // Evita que la inserción rechazada quede pendiente en este contexto.
-                foreach (var entry in ex.Entries)
+                foreach (var entry in _context.ChangeTracker.Entries<Cita>().Where(e => e.State == EntityState.Added).ToList())
                 {
                     entry.State = EntityState.Detached;
                 }
-                ModelState.AddModelError(nameof(model.FechaHoraInicio), ScheduleConflictMessage);
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), IsScheduleDeadlock(ex) ? ScheduleBusyMessage : ScheduleConflictMessage);
                 await LoadFormOptionsAsync(model);
                 return View(model);
             }
@@ -286,28 +304,38 @@ namespace MSDentalSys.Web.Controllers
                 return View(model);
             }
 
-            if (await HasScheduleConflictAsync(cita.OdontologoId, model.FechaHoraInicio, id))
+            if (!IsValidInterval(model.FechaHoraInicio, cita.DuracionProgramadaMinutos))
             {
-                ModelState.AddModelError(nameof(model.FechaHoraInicio), "El odontólogo ya tiene otra cita en esa fecha y hora.");
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), "La fecha y duración seleccionadas exceden el rango permitido.");
                 return View(model);
             }
 
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             int affected;
             try
             {
+                if (await HasScheduleConflictAsync(cita.OdontologoId, model.FechaHoraInicio, cita.DuracionProgramadaMinutos, id))
+                {
+                    await transaction.RollbackAsync();
+                    ModelState.AddModelError(nameof(model.FechaHoraInicio), OverlapMessage);
+                    return View(model);
+                }
                 affected = await _context.Citas
                 .Where(c => c.CitaId == id && c.EstadoCita == cita.EstadoCita &&
                     c.FechaHoraInicio == cita.FechaHoraInicio)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.FechaHoraInicio, model.FechaHoraInicio));
+                if (affected != 1)
+                {
+                    await transaction.RollbackAsync();
+                    return RedirectConcurrencyConflict(id);
+                }
+                await transaction.CommitAsync();
             }
-            catch (Exception ex) when (IsScheduleConflict(ex))
+            catch (Exception ex) when (IsScheduleConflict(ex) || IsScheduleDeadlock(ex))
             {
-                ModelState.AddModelError(nameof(model.FechaHoraInicio), ScheduleConflictMessage);
+                if (!IsScheduleDeadlock(ex)) await transaction.RollbackAsync();
+                ModelState.AddModelError(nameof(model.FechaHoraInicio), IsScheduleDeadlock(ex) ? ScheduleBusyMessage : ScheduleConflictMessage);
                 return View(model);
-            }
-            if (affected != 1)
-            {
-                return RedirectConcurrencyConflict(id);
             }
 
             TempData["SuccessMessage"] = "Cita reagendada correctamente.";
@@ -521,13 +549,37 @@ namespace MSDentalSys.Web.Controllers
             return await _context.ServiciosOdontologicos.AnyAsync(s => s.ServicioOdontologicoId == servicioId && s.Estado);
         }
 
-        private async Task<bool> HasScheduleConflictAsync(string odontologoId, DateTime dateTime, int? excludedCitaId)
+        private static bool IsScheduleDeadlock(Exception exception)
         {
-            return await _context.Citas.AnyAsync(c =>
+            // La estrategia SQL Server sin retry envuelve errores transitorios en
+            // InvalidOperationException, también alrededor de DbUpdateException.
+            while (exception is InvalidOperationException or DbUpdateException && exception.InnerException is { } inner)
+                exception = inner;
+            return exception is SqlException sql && sql.Errors.Cast<SqlError>().Any(e => e.Number == 1205);
+        }
+
+        private static bool IsValidInterval(DateTime start, int? minutes) =>
+            !minutes.HasValue || (minutes.Value is >= 1 and <= 1440 &&
+                start.Ticks <= DateTime.MaxValue.Ticks - minutes.Value * TimeSpan.TicksPerMinute);
+
+        private async Task<bool> HasScheduleConflictAsync(string odontologoId, DateTime dateTime, int? minutes, int? excludedCitaId)
+        {
+            var query = _context.Citas.AsNoTracking().Where(c =>
                 c.OdontologoId == odontologoId &&
-                c.FechaHoraInicio == dateTime &&
                 c.EstadoCita != "Cancelada" &&
                 (!excludedCitaId.HasValue || c.CitaId != excludedCitaId.Value));
+            if (!minutes.HasValue)
+                return await query.AnyAsync(c => c.FechaHoraInicio == dateTime);
+
+            // El CHECK limita las duraciones a 1440. Materializar este rango dentro
+            // de Serializable conserva la protección contra fantasmas y evita DATEADD por fila.
+            var lower = new DateTime(Math.Max(DateTime.MinValue.Ticks, dateTime.Ticks - TimeSpan.TicksPerDay), dateTime.Kind);
+            var end = dateTime.AddTicks(minutes.Value * TimeSpan.TicksPerMinute); // Rango validado antes de abrir la transacción.
+            var candidates = await query.Where(c => c.FechaHoraInicio >= lower && c.FechaHoraInicio < end)
+                .Select(c => new { c.FechaHoraInicio, c.DuracionProgramadaMinutos }).ToListAsync();
+            return candidates.Any(c => c.FechaHoraInicio == dateTime ||
+                (c.DuracionProgramadaMinutos.HasValue &&
+                 dateTime.Ticks - c.FechaHoraInicio.Ticks < c.DuracionProgramadaMinutos.Value * TimeSpan.TicksPerMinute));
         }
 
         private static DateTime RoundToNextHalfHour(DateTime value)

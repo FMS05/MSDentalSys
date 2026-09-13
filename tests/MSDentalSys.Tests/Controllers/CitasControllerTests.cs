@@ -583,10 +583,10 @@ public partial class CitasControllerTests
 
     private sealed class TestDatabase : IAsyncDisposable
     {
-        private readonly SqliteConnection _connection;
+        private readonly System.Data.Common.DbConnection _connection;
         private readonly ServiceProvider _services;
 
-        private TestDatabase(SqliteConnection connection, ApplicationDbContext context, ServiceProvider services)
+        private TestDatabase(System.Data.Common.DbConnection connection, ApplicationDbContext context, ServiceProvider services)
         {
             _connection = connection;
             Context = context;
@@ -605,13 +605,19 @@ public partial class CitasControllerTests
         public static async Task<TestDatabase> CreateAsync(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
+            return await CreateWithConnectionAsync(connection, true, interceptors);
+        }
+
+        public static async Task<TestDatabase> CreateWithConnectionAsync(System.Data.Common.DbConnection connection,
+            bool createSchema, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
+        {
             await connection.OpenAsync();
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlite(connection)
-                .AddInterceptors(interceptors)
-                .Options;
+            var builder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            if (connection is SqliteConnection) builder.UseSqlite(connection);
+            else builder.UseSqlServer(connection);
+            var options = builder.AddInterceptors(interceptors).Options;
             var context = new ApplicationDbContext(options);
-            await context.Database.EnsureCreatedAsync();
+            if (createSchema) await context.Database.EnsureCreatedAsync();
 
             var services = new ServiceCollection()
                 .AddSingleton(context)
