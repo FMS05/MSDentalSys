@@ -22,7 +22,6 @@ namespace MSDentalSys.Web.Controllers
         public async Task<IActionResult> Index(string? searchTerm)
         {
             var query = _context.Pacientes
-                .Include(p => p.AntecedenteClinico)
                 .AsNoTracking()
                 .AsQueryable();
 

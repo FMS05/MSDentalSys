@@ -14,6 +14,49 @@ namespace MSDentalSys.Tests.Controllers;
 public class PacientesControllerTests
 {
     [Theory]
+    [InlineData(null, 3)]
+    [InlineData("   ", 3)]
+    [InlineData("  Ana  ", 1)]
+    [InlineData("Alfa", 2)]
+    [InlineData("1234567", 1)]
+    [InlineData("5550101", 1)]
+    [InlineData("no-existe", 0)]
+    public async Task Index_ConservaFiltrosOrdenYCamposSinNecesitarAntecedentes(string? term, int count)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var without = new Paciente { Nombre = "Ana", Apellido = "Alfa", Cedula = "001-1234567-8",
+            Telefono = "8095550101", Correo = "ana@example.test", Estado = false };
+        var with = new Paciente { Nombre = "Bea", Apellido = "Alfa", Estado = true,
+            AntecedenteClinico = new AntecedenteClinico { Alergias = "Dato clinico" } };
+        var last = new Paciente { Nombre = "Alicia", Apellido = "Zulu" };
+        db.Context.AddRange(last, with, without);
+        await db.Context.SaveChangesAsync();
+        db.Context.ChangeTracker.Clear();
+
+        var view = Assert.IsType<ViewResult>(await db.CreateController().Index(term));
+        var patients = Assert.IsAssignableFrom<IEnumerable<Paciente>>(view.Model).ToList();
+        Assert.Equal(count, patients.Count);
+        Assert.Equal(term, view.ViewData["SearchTerm"]);
+        var expected = string.IsNullOrWhiteSpace(term) ? new[] { without.PacienteId, with.PacienteId, last.PacienteId }
+            : term == "Alfa" ? new[] { without.PacienteId, with.PacienteId }
+            : count == 0 ? Array.Empty<int>() : new[] { without.PacienteId };
+        Assert.Equal(expected, patients.Select(p => p.PacienteId));
+        if (patients.Count > 0)
+        {
+            var patient = patients[0];
+            Assert.Equal("Ana", patient.Nombre);
+            Assert.Equal("Alfa", patient.Apellido);
+            Assert.Equal(without.Cedula, patient.Cedula);
+            Assert.Equal(without.Telefono, patient.Telefono);
+            Assert.Equal(without.Correo, patient.Correo);
+            Assert.False(patient.Estado);
+        }
+        Assert.All(patients, p => Assert.Null(p.AntecedenteClinico));
+        Assert.Empty(db.Context.ChangeTracker.Entries());
+        Assert.Equal(1, await db.Context.AntecedentesClinicos.CountAsync());
+    }
+
+    [Theory]
     [InlineData(false, 0)]
     [InlineData(true, 0)]
     [InlineData(false, -1)]
