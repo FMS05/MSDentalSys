@@ -160,6 +160,30 @@ namespace MSDentalSys.Web.Controllers
             return Json(pacientes);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> BuscarPacientesParaFiltro(string? termino)
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+                return Json(Array.Empty<object>());
+
+            var term = termino.Trim();
+            var pacientes = await _context.Pacientes.AsNoTracking()
+                .Where(p => EF.Functions.Like(p.Nombre, $"%{term}%") ||
+                    EF.Functions.Like(p.Apellido, $"%{term}%") ||
+                    (p.Cedula != null && EF.Functions.Like(p.Cedula, $"%{term}%")))
+                .OrderBy(p => p.Apellido)
+                .ThenBy(p => p.Nombre)
+                .Take(10)
+                .Select(p => new
+                {
+                    id = p.PacienteId,
+                    nombreCompleto = p.Nombre + " " + p.Apellido,
+                    cedula = p.Cedula
+                })
+                .ToListAsync();
+            return Json(pacientes);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador,Recepcionista")]

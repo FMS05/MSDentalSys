@@ -17,6 +17,64 @@ namespace MSDentalSys.Tests.Controllers;
 
 public partial class CitasControllerTests
 {
+    [Theory]
+    [InlineData("Paciente")]
+    [InlineData("Ficticio")]
+    [InlineData("0000009")]
+    public async Task FiltroHistorico_PacienteDesactivado_EncuentraPacienteYCitas(string term)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        await db.AddSupportDataAsync();
+        var start = new DateTime(2030, 2, 1, 9, 0, 0);
+        Assert.IsType<RedirectToActionResult>(await db.CreateController().Create(db.CreateAppointmentModel(start)));
+        (await db.Context.Pacientes.SingleAsync()).Estado = false;
+        await db.Context.SaveChangesAsync();
+        var controller = db.CreateController();
+        using var historical = ToJsonDocument(await controller.BuscarPacientesParaFiltro(" " + term + " "));
+        Assert.Equal(db.PatientId, Assert.Single(historical.RootElement.EnumerateArray()).GetProperty("id").GetInt32());
+        using var creation = ToJsonDocument(await controller.BuscarPacientes(term));
+        Assert.Empty(creation.RootElement.EnumerateArray());
+        var view = Assert.IsType<ViewResult>(await controller.Index(start.Date, "Pendiente", db.PatientId));
+        var cita = Assert.Single(Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model));
+        Assert.Equal(start, cita.FechaHoraInicio);
+        Assert.Equal(db.PatientId, cita.PacienteId);
+        Assert.Equal("Paciente Ficticio", view.ViewData["PacienteNombre"]);
+        Assert.Equal(db.PatientId, view.ViewData["PacienteId"]);
+        Assert.Equal("Pendiente", view.ViewData["Estado"]);
+        Assert.Equal("2030-02-01", view.ViewData["Fecha"]);
+        Assert.False((await db.Context.Pacientes.SingleAsync()).Estado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("sin-coincidencias")]
+    public async Task FiltroHistorico_BusquedaVaciaOSinCoincidencias_DevuelveVacio(string? term)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        await db.AddSupportDataAsync();
+        using var json = ToJsonDocument(await db.CreateController().BuscarPacientesParaFiltro(term));
+        Assert.Empty(json.RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task FiltroHistorico_ActivosEInactivos_ConservaLimiteOrdenYContrato()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        for (var i = 11; i >= 0; i--)
+            db.Context.Pacientes.Add(new Paciente { Nombre = $"Nombre{i:00}", Apellido = "Historico",
+                Estado = i % 2 == 0 });
+        await db.Context.SaveChangesAsync();
+        using var json = ToJsonDocument(await db.CreateController().BuscarPacientesParaFiltro("Historico"));
+        var items = json.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(10, items.Length);
+        Assert.Equal(Enumerable.Range(0, 10).Select(i => $"Nombre{i:00} Historico"),
+            items.Select(p => p.GetProperty("nombreCompleto").GetString()));
+        foreach (var item in items)
+            Assert.Equal(new[] { "cedula", "id", "nombreCompleto" }, item.EnumerateObject().Select(p => p.Name).Order());
+    }
+
     [Fact]
     public async Task BuscarPacientes_PorNombre_DevuelvePacienteActivo()
     {
