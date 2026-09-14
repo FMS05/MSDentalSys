@@ -359,7 +359,7 @@ namespace MSDentalSys.Web.Controllers
                 : await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                AddIdentityErrors(result);
+                TempData["ErrorMessage"] = "No se pudo actualizar el estado del usuario.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 

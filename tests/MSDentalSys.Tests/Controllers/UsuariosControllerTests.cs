@@ -612,6 +612,70 @@ public class UsuariosControllerTests
             join role in fresh.Roles on ur.RoleId equals role.Id select role.Name).SingleAsync());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CambiarEstado_FalloIdentity_ConservaErrorTrasRedirect(bool activate)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("fallo.estado@example.test", "Recepcionista", "Usuario", "Prueba", !activate);
+        var stamp = user.SecurityStamp;
+        database.ControlledManager.FailingOperation = activate ? "Update" : "Stamp";
+        var controller = database.CreateController();
+        var savedTempData = new Dictionary<string, object?>();
+        var provider = new RecordingTempDataProvider(savedTempData);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, provider);
+
+        var result = activate ? await controller.Activate(user.Id) : await controller.Deactivate(user.Id);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Details", redirect.ActionName);
+        Assert.Equal(user.Id, redirect.RouteValues!["id"]);
+        Assert.Empty(controller.ModelState);
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        controller.TempData.Save();
+        var nextRequest = new TempDataDictionary(new DefaultHttpContext(), provider);
+        Assert.Equal("No se pudo actualizar el estado del usuario.", nextRequest["ErrorMessage"]);
+        await using var fresh = database.CreateFreshContext();
+        var stored = await fresh.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(!activate, stored.Estado);
+        Assert.Equal(stamp, stored.SecurityStamp);
+        Assert.Equal("Recepcionista", await (from membership in fresh.UserRoles
+            join role in fresh.Roles on membership.RoleId equals role.Id
+            where membership.UserId == user.Id select role.Name).SingleAsync());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CambiarEstado_Exito_ConservaMensajeYRedirect(bool activate)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("exito.estado@example.test", "Recepcionista", "Usuario", "Prueba", !activate);
+        var controller = database.CreateController();
+
+        var result = activate ? await controller.Activate(user.Id) : await controller.Deactivate(user.Id);
+
+        Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(result).ActionName);
+        Assert.Equal(activate ? "Usuario activado correctamente." : "Usuario desactivado correctamente.",
+            controller.TempData["SuccessMessage"]);
+        Assert.False(controller.TempData.ContainsKey("ErrorMessage"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CambiarEstado_IdInexistente_ConservaNotFound(bool activate)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = activate ? await controller.Activate("inexistente") : await controller.Deactivate("inexistente");
+
+        Assert.IsType<NotFoundResult>(result);
+        Assert.Empty(controller.TempData);
+    }
+
     private static UsuarioEditViewModel EditModel(ApplicationUser user) => new()
     {
         Id = user.Id, Email = user.Email!, Nombre = "Nuevo", Apellido = "Editado",
