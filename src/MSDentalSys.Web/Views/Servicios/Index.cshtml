@@ -4,6 +4,10 @@
 }
 
 <div class="service-page">
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
     @if (TempData["SuccessMessage"] is string successMessage)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -46,7 +50,6 @@
                     <tr>
                         <th>Servicio</th>
                         <th>Descripción</th>
-                        <th>Duración estimada</th>
                         <th>Estado</th>
                         <th class="text-end">Acciones</th>
                     </tr>
@@ -61,7 +64,6 @@
                                 </div>
                             </td>
                             <td class="service-description">@(servicio.Descripcion ?? "—")</td>
-                            <td>@(servicio.DuracionEstimadaMinutos.HasValue ? $"{servicio.DuracionEstimadaMinutos} min" : "No especificada")</td>
                             <td>
                                 <span class="user-status @(servicio.Estado ? "user-status-active" : "user-status-inactive")">
                                     @(servicio.Estado ? "Activo" : "Inactivo")
@@ -91,7 +93,7 @@
                     @if (Model.Servicios.Count == 0)
                     {
                         <tr>
-                            <td colspan="5" class="empty-table">No se encontraron servicios con esos criterios.</td>
+                            <td colspan="4" class="empty-table">No se encontraron servicios con esos criterios.</td>
                         </tr>
                     }
                 </tbody>

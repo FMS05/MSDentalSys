@@ -109,7 +109,7 @@ Los estados utilizados son `Pendiente`, `Confirmada`, `Atendida`, `Cancelada` y 
 ### Servicios
 
 - Los servicios pueden activarse y desactivarse lógicamente.
-- Cada servicio puede registrar una duración estimada en minutos.
+- El servicio principal agrupa procedimientos y administra nombre/descripción. La duración se configura en cada subservicio y se copia como snapshot al crear la cita; la columna de duración del servicio se conserva únicamente como legacy, sin edición en la interfaz.
 
 ### Atención odontológica
 
@@ -232,3 +232,28 @@ Los módulos administrativos y clínicos indicados en esta documentación están
 ## Autor / contexto académico
 
 Proyecto desarrollado como parte del monográfico para optar por el título de Licenciatura en Informática en la Universidad Autónoma de Santo Domingo (UASD).
+
+### Subservicios odontológicos (Fase A)
+
+Desde el detalle de un servicio se consulta su catálogo de procedimientos. Solo el Administrador puede crear, editar nombre/descripción/duración y activar o desactivar subservicios; el padre permanece fijo. Recepcionista y Odontologo tienen consulta.
+
+La Fase 1 de clasificación agrega Principal y Complementario. Create y Edit requieren una selección válida; los registros históricos pueden permanecer temporalmente «Sin clasificar» hasta su edición. La migración aditiva AddClasificacionToSubservicios incorpora una columna nullable y su CHECK, sin clasificar datos existentes. Debe aplicarse antes de ejecutar esta versión contra una BD existente. Esta preparación no carga el catálogo definitivo de 139 procedimientos ni modifica el catálogo provisional, las citas o H8.
+
+El seeder histórico conserva 45 procedimientos provisionales y sus datos originales. Desde Fase 2A su carga administrativa está deshabilitada y el botón fue retirado; no constituye el catálogo definitivo ni se ejecuta al arrancar.
+
+ServicioCatalogoSeeder permanece como infraestructura interna para reconstrucción controlada, pruebas y futura instalación, sin endpoint web. Se validan y conservan los IDs históricos 1 Periodoncia, 2 Odontología General, 3 Endodoncia, 4 Cirugía Bucal y 5 Rehabilitación Oral; los nombres de 2/4/5 pasan a Odontología general, Cirugía oral y Rehabilitación oral / Prótesis. Se crean, si faltan, Odontología estética, Implantología, Ortodoncia, Odontopediatría, Odontología preventiva, Odontología digital y Odontología para pacientes con necesidades especiales. Los 12 quedan activos. La operación es transaccional e idempotente y aborta ante identidades incompatibles, duplicados o servicios ajenos; no elimina ni concilia subservicios. La carga de procedimientos se implementa separadamente en Fase 2B.
+
+Cita tiene dos columnas nullable (SubservicioOdontologicoId y DuracionProgramadaMinutos), sin completar datos históricos. Desde Fase B, las nuevas citas requieren un subservicio activo del servicio activo seleccionado; su duración se copia desde BD como snapshot. Reagendar conserva servicio, subservicio y snapshot aunque cambie el catálogo. Details muestra «No registrado» para datos históricos nulos. H8 está implementado (véase la sección H8); H3/H4 se conservan. La duración del servicio principal permanece como legacy en entidad/BD y no se administra ni muestra en Servicios. El flujo de tratamientos no cambia. No existe componente económico.
+
+### Catálogo definitivo — Fase 2B
+
+SubservicioCatalogo define explícitamente 139 procedimientos de los 12 servicios: 85 Principal y 54 Complementario, con códigos permanentes MSCD-PROC-0001 a MSCD-PROC-0139. Los nombres y clasificación provienen del catálogo definido para la clínica; descripciones y duraciones son configuración funcional del sistema. Las duraciones corresponden a bloques operativos utilizados para la programación de citas y no representan tiempos clínicos obligatorios.
+
+SubservicioCatalogoSeeder permanece como infraestructura interna, sin endpoint web. Requiere los 12 servicios preparados. Reutiliza IDs 1 y 3 como MSCD-PROC-0001/0076; conserva IDs 2/4/5 como legado cambiando únicamente su estado a inactivo. Partiendo de los cinco históricos crea 137 filas: resultado 142 totales, 139 definitivos activos y tres legados inactivos. La carga es explícita, transaccional e idempotente, nunca automática en startup. No se mezclan registros ajenos ni el catálogo provisional de 45.
+
+Una repetición valida identidad por código, padre y nombre; puede restablecer descripción, clasificación, duración y estado definidos por el catálogo. Un nombre incompatible requiere revisión y provoca aborto, no un renombre silencioso. Las citas conservan IDs y snapshots aunque se actualice la duración del catálogo. El catálogo definitivo ya está implantado: 12 servicios, 139 procedimientos definitivos activos y tres legados inactivos. Los controles y endpoints técnicos PrepareCatalog, PrepareDefinitiveCatalog y LoadInitialCatalog fueron retirados. La operación cotidiana utiliza el CRUD normal con los permisos existentes. Los seeders internos no se ejecutan en startup; el provisional de 45 permanece como legacy para pruebas históricas. Este cierre no modifica datos, no requiere migración y no implementa H8.
+# H8 — prevención de solapamientos
+
+Create y Reagendar comprueban intervalos `[inicio, fin)` por odontólogo: `nuevaInicio < existenteFin && existenteInicio < nuevaFin`. Horarios contiguos se permiten; todos los estados excepto Cancelada ocupan agenda. El conflicto muestra: «El horario seleccionado se superpone con otra cita del odontólogo. Selecciona una hora diferente.»
+
+La consulta y escritura se ejecutan en una transacción Serializable. Se conservan H3, el índice H4 `UX_Citas_Odontologo_FechaHoraInicio_NoCancelada` y los snapshots. Una duración histórica NULL solo permite detectar conflicto por inicio idéntico; no se infiere duración ni se rellenan históricos. No hay migración ni capas adicionales. SQL Server 1205 devuelve un mensaje de agenda ocupada sin retry automático. La validación concurrente real requiere configuración explícita de un servidor de pruebas; véase [pruebas](docs/pruebas.md).

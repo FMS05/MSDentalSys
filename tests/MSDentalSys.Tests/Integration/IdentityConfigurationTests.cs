@@ -15,6 +15,13 @@ public class IdentityConfigurationTests : IClassFixture<CustomWebApplicationFact
     }
 
     [Fact]
+    public void SecurityStamp_ConfiguracionRealDeWeb_RevalidaCadaMinuto()
+    {
+        var options = factory.Services.GetRequiredService<IOptions<SecurityStampValidatorOptions>>().Value;
+        Assert.Equal(TimeSpan.FromMinutes(1), options.ValidationInterval);
+    }
+
+    [Fact]
     public void Lockout_ConfiguracionRealDeWeb_CincoFallosYUnMinuto()
     {
         var options = factory.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;

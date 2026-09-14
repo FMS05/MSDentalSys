@@ -22,7 +22,6 @@ namespace MSDentalSys.Web.Controllers
         public async Task<IActionResult> Index(string? searchTerm)
         {
             var query = _context.Pacientes
-                .Include(p => p.AntecedenteClinico)
                 .AsNoTracking()
                 .AsQueryable();
 
@@ -279,6 +278,17 @@ namespace MSDentalSys.Web.Controllers
 
         private async Task ValidateConditionalFieldsAsync(PacienteFormViewModel model, int? currentSeguroId = null)
         {
+            if (model.FechaNacimiento.HasValue && model.FechaNacimiento.Value.Date > DateTime.Today)
+            {
+                ModelState.AddModelError(nameof(model.FechaNacimiento), "La fecha de nacimiento no puede ser posterior a la fecha actual.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Sexo) &&
+                model.Sexo is not ("Femenino" or "Masculino" or "Otro"))
+            {
+                ModelState.AddModelError(nameof(model.Sexo), "Seleccione un sexo válido.");
+            }
+
             var cedula = NullIfWhiteSpace(model.Cedula);
             if (cedula is not null && !System.Text.RegularExpressions.Regex.IsMatch(
                 cedula, @"\A(?:[0-9]{11}|[0-9]{3}-[0-9]{7}-[0-9])\z"))

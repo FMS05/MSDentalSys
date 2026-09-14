@@ -1,0 +1,18 @@
+@model MSDentalSys.Web.Models.ViewModels.SubservicioFormViewModel
+@{ ViewData["Title"] = "Editar subservicio"; }
+<div class="service-page">
+    <div class="page-heading"><div><p class="dashboard-eyebrow">Catálogo clínico</p><h1>Editar subservicio</h1></div><a asp-action="Details" asp-route-id="@Model.SubservicioOdontologicoId" class="btn btn-light">Volver</a></div>
+    <div class="service-form-card"><form asp-action="Edit" asp-route-id="@Model.SubservicioOdontologicoId" method="post" autocomplete="off">
+        <input asp-for="SubservicioOdontologicoId" type="hidden" />
+        <input type="hidden" name="ServicioOdontologicoId" value="@Model.ServicioOdontologicoId" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-4"><strong>Servicio</strong><p>@Model.ServicioNombre</p><span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span></div>
+        <partial name="_Fields" model="Model" />
+        @if (Model.Clasificacion is null)
+        {
+            <p class="text-muted mt-2">Sin clasificar. Selecciona una clasificación para guardar.</p>
+        }
+        <div class="d-flex justify-content-end gap-2 mt-4"><a asp-action="Details" asp-route-id="@Model.SubservicioOdontologicoId" class="btn btn-outline-secondary">Cancelar</a><button class="btn btn-ms-primary" type="submit">Guardar cambios</button></div>
+    </form></div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

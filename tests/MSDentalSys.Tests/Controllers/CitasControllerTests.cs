@@ -15,8 +15,66 @@ using Xunit;
 
 namespace MSDentalSys.Tests.Controllers;
 
-public class CitasControllerTests
+public partial class CitasControllerTests
 {
+    [Theory]
+    [InlineData("Paciente")]
+    [InlineData("Ficticio")]
+    [InlineData("0000009")]
+    public async Task FiltroHistorico_PacienteDesactivado_EncuentraPacienteYCitas(string term)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        await db.AddSupportDataAsync();
+        var start = new DateTime(2030, 2, 1, 9, 0, 0);
+        Assert.IsType<RedirectToActionResult>(await db.CreateController().Create(db.CreateAppointmentModel(start)));
+        (await db.Context.Pacientes.SingleAsync()).Estado = false;
+        await db.Context.SaveChangesAsync();
+        var controller = db.CreateController();
+        using var historical = ToJsonDocument(await controller.BuscarPacientesParaFiltro(" " + term + " "));
+        Assert.Equal(db.PatientId, Assert.Single(historical.RootElement.EnumerateArray()).GetProperty("id").GetInt32());
+        using var creation = ToJsonDocument(await controller.BuscarPacientes(term));
+        Assert.Empty(creation.RootElement.EnumerateArray());
+        var view = Assert.IsType<ViewResult>(await controller.Index(start.Date, "Pendiente", db.PatientId));
+        var cita = Assert.Single(Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model));
+        Assert.Equal(start, cita.FechaHoraInicio);
+        Assert.Equal(db.PatientId, cita.PacienteId);
+        Assert.Equal("Paciente Ficticio", view.ViewData["PacienteNombre"]);
+        Assert.Equal(db.PatientId, view.ViewData["PacienteId"]);
+        Assert.Equal("Pendiente", view.ViewData["Estado"]);
+        Assert.Equal("2030-02-01", view.ViewData["Fecha"]);
+        Assert.False((await db.Context.Pacientes.SingleAsync()).Estado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("sin-coincidencias")]
+    public async Task FiltroHistorico_BusquedaVaciaOSinCoincidencias_DevuelveVacio(string? term)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        await db.AddSupportDataAsync();
+        using var json = ToJsonDocument(await db.CreateController().BuscarPacientesParaFiltro(term));
+        Assert.Empty(json.RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task FiltroHistorico_ActivosEInactivos_ConservaLimiteOrdenYContrato()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        for (var i = 11; i >= 0; i--)
+            db.Context.Pacientes.Add(new Paciente { Nombre = $"Nombre{i:00}", Apellido = "Historico",
+                Estado = i % 2 == 0 });
+        await db.Context.SaveChangesAsync();
+        using var json = ToJsonDocument(await db.CreateController().BuscarPacientesParaFiltro("Historico"));
+        var items = json.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(10, items.Length);
+        Assert.Equal(Enumerable.Range(0, 10).Select(i => $"Nombre{i:00} Historico"),
+            items.Select(p => p.GetProperty("nombreCompleto").GetString()));
+        foreach (var item in items)
+            Assert.Equal(new[] { "cedula", "id", "nombreCompleto" }, item.EnumerateObject().Select(p => p.Name).Order());
+    }
+
     [Fact]
     public async Task BuscarPacientes_PorNombre_DevuelvePacienteActivo()
     {
@@ -199,11 +257,12 @@ public class CitasControllerTests
             OdontologoId = database.OdontologistId,
             ServicioOdontologicoId = database.ServiceId,
             FechaHoraInicio = start,
-            Observaciones = "Cita ficticia generada por prueba automatizada"
+            Observaciones = "Cita ficticia generada por prueba automatizada",
+            SubservicioOdontologicoId = database.SubserviceId
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        var cita = await database.Context.Citas.SingleAsync();
+        var cita = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(database.PatientId, cita.PacienteId);
         Assert.Equal(database.OdontologistId, cita.OdontologoId);
         Assert.Equal(database.ServiceId, cita.ServicioOdontologicoId);
@@ -332,7 +391,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        var stored = await database.Context.Citas.SingleAsync();
+        var stored = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(newStart, stored.FechaHoraInicio);
         Assert.Equal(database.PatientId, stored.PacienteId);
         Assert.Equal(database.OdontologistId, stored.OdontologoId);
@@ -363,7 +422,7 @@ public class CitasControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Single(controller.ModelState[nameof(ReagendarCitaViewModel.FechaHoraInicio)]!.Errors);
         Assert.Contains("otra cita", controller.ModelState[nameof(ReagendarCitaViewModel.FechaHoraInicio)]!.Errors[0].ErrorMessage, StringComparison.OrdinalIgnoreCase);
-        var stored = await database.Context.Citas.SingleAsync(c => c.CitaId == first.CitaId);
+        var stored = await database.Context.Citas.AsNoTracking().SingleAsync(c => c.CitaId == first.CitaId);
         Assert.Equal(originalStart, stored.FechaHoraInicio);
     }
 
@@ -384,7 +443,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Cancelada", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Cancelada", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("cancelada", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -405,7 +464,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Atendida", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Atendida", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("atendida", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -428,7 +487,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(originalStatus, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(originalStatus, (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -452,7 +511,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Pendiente", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Pendiente", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
         Assert.Contains("registrar su atención odontológica", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -473,7 +532,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("No asistió", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]
@@ -540,7 +599,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("No asistió", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("No asistió", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]
@@ -560,7 +619,7 @@ public class CitasControllerTests
         });
 
         Assert.IsType<ForbidResult>(result);
-        Assert.Equal("Confirmada", (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal("Confirmada", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Theory]
@@ -582,10 +641,10 @@ public class CitasControllerTests
 
     private sealed class TestDatabase : IAsyncDisposable
     {
-        private readonly SqliteConnection _connection;
+        private readonly System.Data.Common.DbConnection _connection;
         private readonly ServiceProvider _services;
 
-        private TestDatabase(SqliteConnection connection, ApplicationDbContext context, ServiceProvider services)
+        private TestDatabase(System.Data.Common.DbConnection connection, ApplicationDbContext context, ServiceProvider services)
         {
             _connection = connection;
             Context = context;
@@ -596,16 +655,27 @@ public class CitasControllerTests
         public int PatientId { get; private set; }
         public string OdontologistId { get; private set; } = string.Empty;
         public int ServiceId { get; private set; }
+        public int SubserviceId { get; private set; }
 
-        public static async Task<TestDatabase> CreateAsync()
+        public ApplicationDbContext CreateIndependentContext() => new(
+            new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options);
+
+        public static async Task<TestDatabase> CreateAsync(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
+            return await CreateWithConnectionAsync(connection, true, interceptors);
+        }
+
+        public static async Task<TestDatabase> CreateWithConnectionAsync(System.Data.Common.DbConnection connection,
+            bool createSchema, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
+        {
             await connection.OpenAsync();
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlite(connection)
-                .Options;
+            var builder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            if (connection is SqliteConnection) builder.UseSqlite(connection);
+            else builder.UseSqlServer(connection);
+            var options = builder.AddInterceptors(interceptors).Options;
             var context = new ApplicationDbContext(options);
-            await context.Database.EnsureCreatedAsync();
+            if (createSchema) await context.Database.EnsureCreatedAsync();
 
             var services = new ServiceCollection()
                 .AddSingleton(context)
@@ -667,6 +737,13 @@ public class CitasControllerTests
             PatientId = patient.PacienteId;
             OdontologistId = odontologist.Id;
             ServiceId = service.ServicioOdontologicoId;
+            var subservice = new SubservicioOdontologico
+            {
+                ServicioOdontologicoId = ServiceId, Nombre = "Procedimiento de prueba", DuracionEstimadaMinutos = 60
+            };
+            Context.SubserviciosOdontologicos.Add(subservice);
+            await Context.SaveChangesAsync();
+            SubserviceId = subservice.SubservicioOdontologicoId;
         }
 
         public CitasController CreateController(string? role = null)
@@ -734,6 +811,7 @@ public class CitasControllerTests
                 PacienteId = PatientId,
                 OdontologoId = OdontologistId,
                 ServicioOdontologicoId = ServiceId,
+                SubservicioOdontologicoId = SubserviceId,
                 FechaHoraInicio = start
             };
         }

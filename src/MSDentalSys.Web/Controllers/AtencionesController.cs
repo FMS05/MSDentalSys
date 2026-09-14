@@ -49,15 +49,14 @@ public class AtencionesController : Controller
     {
         if (!ModelState.IsValid)
         {
-            await ReturnCreateViewWithAppointmentAsync(model.CitaId);
-            return View(model);
+            return await ReturnCreateViewWithAppointmentAsync(model);
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            var cita = await GetCitaQuery().SingleOrDefaultAsync(c => c.CitaId == model.CitaId);
+            var cita = await GetCitaQuery().AsNoTracking().SingleOrDefaultAsync(c => c.CitaId == model.CitaId);
             if (cita is null)
             {
                 await transaction.RollbackAsync();
@@ -78,6 +77,18 @@ public class AtencionesController : Controller
                 return View(model);
             }
 
+            // Claim the appointment before inserting; both writes belong to this transaction.
+            var affected = await _context.Citas
+                .Where(c => c.CitaId == cita.CitaId && c.EstadoCita == cita.EstadoCita &&
+                    (c.EstadoCita == "Pendiente" || c.EstadoCita == "Confirmada"))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.EstadoCita, "Atendida"));
+            if (affected != 1)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError(string.Empty, "Otra operación modificó esta cita mientras intentabas actualizarla. Revisa los datos actuales y vuelve a intentarlo.");
+                return await ReturnCreateViewWithAppointmentAsync(model);
+            }
+
             var atencion = new AtencionOdontologica
             {
                 PacienteId = cita.PacienteId,
@@ -93,8 +104,6 @@ public class AtencionesController : Controller
             _context.AtencionesOdontologicas.Add(atencion);
             await _context.SaveChangesAsync();
 
-            cita.EstadoCita = "Atendida";
-            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             TempData["SuccessMessage"] = "La atención odontológica fue registrada correctamente.";
@@ -104,8 +113,7 @@ public class AtencionesController : Controller
         {
             await transaction.RollbackAsync();
             ModelState.AddModelError(string.Empty, "No fue posible registrar la atención. Verifica que la cita no haya sido atendida previamente.");
-            await ReturnCreateViewWithAppointmentAsync(model.CitaId);
-            return View(model);
+            return await ReturnCreateViewWithAppointmentAsync(model);
         }
     }
 
@@ -180,12 +188,20 @@ public class AtencionesController : Controller
         ViewData["Cita"] = cita;
     }
 
-    private async Task ReturnCreateViewWithAppointmentAsync(int citaId)
+    private async Task<IActionResult> ReturnCreateViewWithAppointmentAsync(AtencionOdontologicaCreateViewModel model)
     {
-        var cita = await GetCitaQuery().AsNoTracking().SingleOrDefaultAsync(c => c.CitaId == citaId);
-        if (cita is not null)
+        var cita = await GetCitaQuery().AsNoTracking().SingleOrDefaultAsync(c => c.CitaId == model.CitaId);
+        if (cita is null)
         {
-            SetAppointmentViewData(cita);
+            return NotFound();
         }
+
+        if (User.IsInRole("Odontologo") && cita.OdontologoId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+        {
+            return Forbid();
+        }
+
+        SetAppointmentViewData(cita);
+        return View(model);
     }
 }

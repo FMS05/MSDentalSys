@@ -20,6 +20,10 @@ namespace MSDentalSys.Web.Models.ViewModels
         [Display(Name = "Servicio odontológico")]
         public int ServicioOdontologicoId { get; set; }
 
+        [Required(ErrorMessage = "Selecciona un subservicio.")]
+        [Display(Name = "Subservicio")]
+        public int? SubservicioOdontologicoId { get; set; }
+
         [Required(ErrorMessage = "Indica la fecha y hora de la cita.")]
         [Display(Name = "Fecha y hora")]
         public DateTime FechaHoraInicio { get; set; } = DateTime.Now.AddHours(1);
@@ -30,5 +34,6 @@ namespace MSDentalSys.Web.Models.ViewModels
 
         public IEnumerable<SelectListItem> Odontologos { get; set; } = [];
         public IEnumerable<SelectListItem> Servicios { get; set; } = [];
+        public IEnumerable<SelectListItem> Subservicios { get; set; } = [];
     }
 }

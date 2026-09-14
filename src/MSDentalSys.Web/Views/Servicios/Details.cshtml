@@ -37,9 +37,17 @@
         </div>
         <dl class="service-detail-grid">
             <div><dt>Descripción</dt><dd>@(Model.Descripcion ?? "Sin descripción")</dd></div>
-            <div><dt>Duración estimada</dt><dd>@(Model.DuracionEstimadaMinutos.HasValue ? $"{Model.DuracionEstimadaMinutos} minutos" : "No especificada")</dd></div>
             <div><dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
             <div><dt>Estado</dt><dd>@(Model.Estado ? "Activo" : "Inactivo")</dd></div>
         </dl>
     </div>
+</div>
+<div class="service-page mt-4">
+    <div class="page-heading"><h2>Subservicios</h2><a asp-controller="Subservicios" asp-action="Index" class="btn btn-light">Ver catálogo</a>
+    @if (User.IsInRole("Administrador") && Model.Estado)
+    {
+        <a asp-controller="Subservicios" asp-action="Create" asp-route-servicioId="@Model.ServicioOdontologicoId" class="btn btn-ms-primary">Nuevo subservicio</a>
+    }
+    </div>
+    <partial name="~/Views/Subservicios/_List.cshtml" model="Model.Subservicios.OrderBy(s => s.Nombre)" />
 </div>

@@ -11,6 +11,10 @@ namespace MSDentalSys.Data.Models
         public string OdontologoId { get; set; } = string.Empty;
 
         public int ServicioOdontologicoId { get; set; }
+        public int? SubservicioOdontologicoId { get; set; }
+        [Range(1, 1440)]
+        public int? DuracionProgramadaMinutos { get; set; }
+        public SubservicioOdontologico? SubservicioOdontologico { get; set; }
 
         public DateTime FechaHoraInicio { get; set; }
 

@@ -50,6 +50,8 @@
                     <div><dt>Paciente</dt><dd>@Model.Paciente.Nombre @Model.Paciente.Apellido</dd></div>
                     <div><dt>Odontólogo</dt><dd>@Model.Odontologo.Nombre @Model.Odontologo.Apellido</dd></div>
                     <div><dt>Servicio</dt><dd>@Model.ServicioOdontologico.Nombre</dd></div>
+                    <div><dt>Subservicio</dt><dd>@(Model.SubservicioOdontologico?.Nombre ?? "No registrado")</dd></div>
+                    <div><dt>Duración programada</dt><dd>@(Model.DuracionProgramadaMinutos.HasValue ? $"{Model.DuracionProgramadaMinutos} min" : "No registrado")</dd></div>
                     <div><dt>Creada</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
                     <div class="detail-full"><dt>Observaciones</dt><dd>@(Model.Observaciones ?? "Sin observaciones")</dd></div>
                 </dl>

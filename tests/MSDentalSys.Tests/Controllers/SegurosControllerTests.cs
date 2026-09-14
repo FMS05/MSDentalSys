@@ -13,6 +13,104 @@ namespace MSDentalSys.Tests.Controllers;
 
 public class SegurosControllerTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ColisionEnPersistencia_DevuelveNombreYDescartaCambioPendiente(bool edit)
+    {
+        var gate = new BeforeSave();
+        await using var db = await TestDatabase.CreateAsync(gate);
+        var original = db.CreateSeguro("Original");
+        db.Context.Add(original);
+        await db.Context.SaveChangesAsync();
+        // Insert the winner after AnyAsync, before the losing SaveChanges transaction.
+        gate.Callback = async () => { await db.Context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Seguros (Nombre, Estado, FechaCreacion) VALUES ('Colision', 1, '2030-01-01')"); };
+        var controller = db.CreateController();
+        var model = new SeguroFormViewModel { SeguroId = original.SeguroId, Nombre = " Colision " };
+        var result = edit ? await controller.Edit(original.SeguroId, model) : await controller.Create(model);
+        Assert.True(gate.Invoked);
+        Assert.Same(model, Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal("Ya existe un seguro con ese nombre.", Assert.Single(controller.ModelState["Nombre"]!.Errors).ErrorMessage);
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        Assert.DoesNotContain(db.Context.ChangeTracker.Entries(), e => e.State is EntityState.Added or EntityState.Modified);
+        db.Context.ChangeTracker.Clear();
+        Assert.Equal(2, await db.Context.Seguros.CountAsync());
+        Assert.Equal("Original", (await db.Context.Seguros.FindAsync(original.SeguroId))!.Nombre);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ErrorAjeno_NoSeConvierteEnDuplicado(bool edit)
+    {
+        var gate = new BeforeSave();
+        await using var db = await TestDatabase.CreateAsync(gate);
+        var original = db.CreateSeguro("Original");
+        db.Context.Add(original); await db.Context.SaveChangesAsync();
+        var error = new DbUpdateException("Unrelated", new SqliteException("FOREIGN KEY constraint failed", 19, 787));
+        gate.Callback = () => throw error;
+        var controller = db.CreateController();
+        var model = new SeguroFormViewModel { SeguroId = original.SeguroId, Nombre = "Nuevo" };
+        var actual = await Assert.ThrowsAsync<DbUpdateException>(async () =>
+        {
+            if (edit) await controller.Edit(original.SeguroId, model);
+            else await controller.Create(model);
+        });
+        Assert.Same(error, actual);
+        Assert.True(controller.ModelState.IsValid);
+    }
+
+    [Theory]
+    [InlineData("Original", true)]
+    [InlineData("Otro", false)]
+    public async Task Edit_UnicidadExcluyePropioId(string name, bool success)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var original = db.CreateSeguro("Original");
+        db.Context.AddRange(original, db.CreateSeguro("Otro")); await db.Context.SaveChangesAsync();
+        var controller = db.CreateController();
+        var result = await controller.Edit(original.SeguroId, new SeguroFormViewModel { SeguroId = original.SeguroId, Nombre = name });
+        if (success) Assert.IsType<RedirectToActionResult>(result);
+        else Assert.Contains("Ya existe", Assert.Single(controller.ModelState["Nombre"]!.Errors).ErrorMessage);
+        db.Context.ChangeTracker.Clear();
+        Assert.Equal("Original", (await db.Context.Seguros.FindAsync(original.SeguroId))!.Nombre);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Estado_ConPacientes_ConservaRelacionYMensajeYAdmiteRepeticion(bool active)
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var seguro = db.CreateSeguro("Historico", !active);
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Prueba", Seguro = seguro };
+        db.Context.Add(paciente); await db.Context.SaveChangesAsync();
+        var controller = db.CreateController();
+        for (var i = 0; i < 2; i++)
+        {
+            var result = active ? await controller.Activate(seguro.SeguroId) : await controller.Deactivate(seguro.SeguroId);
+            Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(result).ActionName);
+            Assert.Contains(active ? "activado correctamente" : "desactivado correctamente", controller.TempData["SuccessMessage"]!.ToString());
+        }
+        Assert.Equal(active, (await db.Context.Seguros.SingleAsync()).Estado);
+        Assert.Equal(seguro.SeguroId, (await db.Context.Pacientes.SingleAsync()).SeguroId);
+        Assert.IsType<NotFoundResult>(await controller.Activate(-1));
+        Assert.IsType<NotFoundResult>(await controller.Deactivate(-1));
+    }
+
+    private sealed class BeforeSave : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public Func<Task>? Callback { get; set; }
+        public bool Invoked { get; private set; }
+        public override async ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Callback is { } callback) { Callback = null; Invoked = true; await callback(); }
+            return result;
+        }
+    }
     [Fact]
     public async Task Index_Administrador_PuedeListar()
     {
@@ -158,12 +256,13 @@ public class SegurosControllerTests
 
         public ApplicationDbContext Context { get; }
 
-        public static async Task<TestDatabase> CreateAsync()
+        public static async Task<TestDatabase> CreateAsync(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseSqlite(connection)
+                .AddInterceptors(interceptors)
                 .Options;
             var context = new ApplicationDbContext(options);
             await context.Database.EnsureCreatedAsync();

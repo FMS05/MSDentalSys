@@ -53,6 +53,7 @@ namespace MSDentalSys.Web.Controllers
             }
 
             var servicio = await _context.ServiciosOdontologicos
+                .Include(s => s.Subservicios)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(servicio => servicio.ServicioOdontologicoId == id);
 
@@ -80,7 +81,6 @@ namespace MSDentalSys.Web.Controllers
             {
                 Nombre = model.Nombre.Trim(),
                 Descripcion = NullIfWhiteSpace(model.Descripcion),
-                DuracionEstimadaMinutos = model.DuracionEstimadaMinutos,
                 Estado = true,
                 FechaCreacion = DateTime.Now
             });
@@ -131,7 +131,6 @@ namespace MSDentalSys.Web.Controllers
 
             servicio.Nombre = model.Nombre.Trim();
             servicio.Descripcion = NullIfWhiteSpace(model.Descripcion);
-            servicio.DuracionEstimadaMinutos = model.DuracionEstimadaMinutos;
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "Servicio odontológico actualizado correctamente.";
@@ -178,8 +177,7 @@ namespace MSDentalSys.Web.Controllers
             {
                 ServicioOdontologicoId = servicio.ServicioOdontologicoId,
                 Nombre = servicio.Nombre,
-                Descripcion = servicio.Descripcion,
-                DuracionEstimadaMinutos = servicio.DuracionEstimadaMinutos
+                Descripcion = servicio.Descripcion
             };
         }
 

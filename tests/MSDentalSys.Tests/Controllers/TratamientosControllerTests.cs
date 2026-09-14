@@ -24,7 +24,7 @@ public class TratamientosControllerTests
         var result = await controller.Create(database.CreateModel(atencion, database.ActiveServiceId));
 
         Assert.IsType<RedirectToActionResult>(result);
-        var treatment = await database.Context.Tratamientos.SingleAsync();
+        var treatment = await database.Context.Tratamientos.AsNoTracking().SingleAsync();
         Assert.Equal(atencion.AtencionOdontologicaId, treatment.AtencionOdontologicaId);
         Assert.Equal(database.ActiveServiceId, treatment.ServicioOdontologicoId);
         Assert.Equal("Planificado", treatment.EstadoTratamiento);
@@ -68,7 +68,7 @@ public class TratamientosControllerTests
 
         await controller.Create(model);
 
-        Assert.Null((await database.Context.Tratamientos.SingleAsync()).Observaciones);
+        Assert.Null((await database.Context.Tratamientos.AsNoTracking().SingleAsync()).Observaciones);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class TratamientosControllerTests
 
         await controller.Create(database.CreateModel(atencion, database.ActiveServiceId));
 
-        Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Planificado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class TratamientosControllerTests
         var result = await controller.UpdateStatus(treatment.TratamientoId, "En progreso");
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("En progreso", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("En progreso", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class TratamientosControllerTests
 
         await controller.UpdateStatus(treatment.TratamientoId, "Completado");
 
-        Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Completado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class TratamientosControllerTests
         var result = await controller.UpdateStatus(treatment.TratamientoId, "Planificado");
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("En progreso", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("En progreso", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
         Assert.Contains("retroceder", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -169,7 +169,7 @@ public class TratamientosControllerTests
 
         await controller.UpdateStatus(treatment.TratamientoId, "Completado");
 
-        Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Completado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class TratamientosControllerTests
 
         await controller.UpdateStatus(treatment.TratamientoId, "En progreso");
 
-        Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Completado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class TratamientosControllerTests
         var result = await controller.UpdateStatus(treatment.TratamientoId, "Planificado");
 
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Completado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Completado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
         Assert.Contains("completado", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -218,12 +218,12 @@ public class TratamientosControllerTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var atencion = await database.AddAttentionAsync();
-        var originalStatus = (await database.Context.Citas.SingleAsync()).EstadoCita;
+        var originalStatus = (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita;
         var controller = database.CreateController("Administrador", database.AdminId);
 
         await controller.Create(database.CreateModel(atencion, database.ActiveServiceId));
 
-        Assert.Equal(originalStatus, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(originalStatus, (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]
@@ -236,7 +236,7 @@ public class TratamientosControllerTests
         var result = await controller.UpdateStatus(treatment.TratamientoId, "En progreso");
 
         Assert.IsType<ForbidResult>(result);
-        Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Planificado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class TratamientosControllerTests
 
         await controller.UpdateStatus(treatment.TratamientoId, "Cancelado");
 
-        Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Planificado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
         Assert.Contains("no es válido", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -267,7 +267,7 @@ public class TratamientosControllerTests
         Assert.Equal("Details", redirect.ActionName);
         Assert.Equal(treatment.AtencionOdontologicaId, redirect.RouteValues!["id"]);
         Assert.NotEqual(treatment.TratamientoId, redirect.RouteValues["id"]);
-        Assert.Equal("Planificado", (await database.Context.Tratamientos.SingleAsync()).EstadoTratamiento);
+        Assert.Equal("Planificado", (await database.Context.Tratamientos.AsNoTracking().SingleAsync()).EstadoTratamiento);
         Assert.Contains("no es válido", controller.TempData["ErrorMessage"]?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -338,7 +338,8 @@ public class TratamientosControllerTests
                 PacienteId = PatientId,
                 OdontologoId = OdontologistId,
                 ServicioOdontologicoId = ActiveServiceId,
-                FechaHoraInicio = new DateTime(2030, 1, 15, 9, 0, 0),
+                FechaHoraInicio = new DateTime(2030, 1, 15, 9, 0, 0)
+                    .AddMinutes(15 * await Context.Citas.CountAsync()),
                 EstadoCita = "Atendida"
             };
             Context.Citas.Add(cita);

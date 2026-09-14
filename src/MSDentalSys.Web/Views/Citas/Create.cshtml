@@ -39,6 +39,15 @@
                     <span asp-validation-for="ServicioOdontologicoId" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
+                    <label asp-for="SubservicioOdontologicoId" class="form-label"></label>
+                    <select asp-for="SubservicioOdontologicoId" asp-items="Model.Subservicios" class="form-select"
+                            disabled="@(!Model.Subservicios.Any())" data-endpoint="@Url.Action("ParaCitas", "Subservicios")" aria-describedby="subservicios-status">
+                        <option value="">Seleccione un subservicio</option>
+                    </select>
+                    <span asp-validation-for="SubservicioOdontologicoId" class="text-danger"></span>
+                    <small id="subservicios-status" class="text-muted" role="status"></small>
+                </div>
+                <div class="col-md-6">
                     <label asp-for="FechaHoraInicio" class="form-label"></label>
                     <input asp-for="FechaHoraInicio" class="form-control" autocomplete="off" type="datetime-local" />
                     <span asp-validation-for="FechaHoraInicio" class="text-danger"></span>
@@ -59,6 +68,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/citas-subservicios.js" asp-append-version="true"></script>
     <script>
         (() => {
             const search = document.getElementById('PacienteBusqueda');
@@ -66,6 +76,13 @@
             const results = document.getElementById('patient-search-results');
             const endpoint = '@Url.Action("BuscarPacientes", "Citas")';
             let timer;
+            let pending;
+
+            const cancelSearch = () => {
+                clearTimeout(timer);
+                pending?.abort();
+                pending = null;
+            };
             let selectedName = search?.value ?? '';
 
             const clearResults = () => {
@@ -99,6 +116,7 @@
                     documentId.textContent = patient.cedula ? `Cédula: ${patient.cedula}` : 'Cédula: No registrada';
                     option.append(name, lineBreak, documentId);
                     option.addEventListener('click', () => {
+                        cancelSearch();
                         search.value = patient.nombreCompleto;
                         selectedName = patient.nombreCompleto;
                         hiddenId.value = patient.id;
@@ -111,25 +129,36 @@
             };
 
             search?.addEventListener('input', () => {
-                if (search.value !== selectedName) hiddenId.value = '0';
-                clearTimeout(timer);
+                cancelSearch();
                 clearResults();
+                if (search.value !== selectedName) hiddenId.value = '0';
 
                 const term = search.value.trim();
                 if (term.length < 1) return;
 
+                const request = new AbortController();
+                pending = request;
+                const isCurrent = () => pending === request && search.value.trim() === term;
                 timer = setTimeout(async () => {
+                    if (!isCurrent()) return;
                     try {
-                        const response = await fetch(`${endpoint}?termino=${encodeURIComponent(term)}`);
-                        if (response.ok) renderResults(await response.json());
-                    } catch {
+                        const response = await fetch(`${endpoint}?termino=${encodeURIComponent(term)}`, { signal: request.signal });
+                        if (response.ok) {
+                            const patients = await response.json();
+                            if (isCurrent()) renderResults(patients);
+                        }
+                    } catch (error) {
+                        if (error.name === 'AbortError' || !isCurrent()) return;
                         clearResults();
                     }
                 }, 300);
             });
 
             document.addEventListener('click', event => {
-                if (!results?.contains(event.target) && event.target !== search) clearResults();
+                if (!results?.contains(event.target) && event.target !== search) {
+                    cancelSearch();
+                    clearResults();
+                }
             });
         })();
     </script>

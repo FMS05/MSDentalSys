@@ -1,0 +1,17 @@
+@model IEnumerable<MSDentalSys.Data.Models.SubservicioOdontologico>
+<div class="service-table-card table-responsive"><table class="table align-middle">
+<thead><tr><th>Servicio</th><th>Nombre</th><th>Duración</th><th>Estado</th><th>Acciones</th></tr></thead>
+<tbody>
+@foreach (var item in Model)
+{
+    <tr><td>@item.ServicioOdontologico.Nombre</td><td>@item.Nombre</td><td>@item.DuracionEstimadaMinutos min</td><td>@(item.Estado ? "Activo" : "Inactivo")</td>
+    <td><a asp-controller="Subservicios" asp-action="Details" asp-route-id="@item.SubservicioOdontologicoId" class="btn btn-sm btn-user-action">Ver</a>
+    @if (User.IsInRole("Administrador"))
+    {
+        <a asp-controller="Subservicios" asp-action="Edit" asp-route-id="@item.SubservicioOdontologicoId" class="btn btn-sm btn-user-action">Editar</a>
+        <form asp-controller="Subservicios" asp-action="@(item.Estado ? "Deactivate" : "Activate")" asp-route-id="@item.SubservicioOdontologicoId" method="post" class="d-inline"><button type="submit" class="btn btn-sm btn-user-action">@(item.Estado ? "Desactivar" : "Activar")</button></form>
+    }
+    </td></tr>
+}
+@if (!Model.Any()) { <tr><td colspan="5">No hay subservicios registrados.</td></tr> }
+</tbody></table></div>

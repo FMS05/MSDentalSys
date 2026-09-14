@@ -211,3 +211,60 @@ Inicio Web → RoleSeeder / AdminSeeder / SeguroSeeder (salvo Testing)
 MSDentalSys.Tests → Web / Data
   Pruebas aisladas: SQLite InMemory / WebApplicationFactory
 ```
+
+## Subservicios odontológicos — Fase A
+
+ServicioOdontologico tiene una relación 1:N con SubservicioOdontologico. Cada procedimiento registra Nombre (100), Descripcion opcional (300), DuracionEstimadaMinutos obligatoria entre 1 y 1440, Estado y FechaCreacion. El Administrador administra; Recepcionista y Odontologo consultan. No se ofrece eliminación física ni cambio de servicio padre al editar. Desactivar el padre conserva los estados individuales de sus hijos; activar un hijo requiere padre activo.
+
+Cita conserva ServicioOdontologicoId y agrega SubservicioOdontologicoId y DuracionProgramadaMinutos nullable, sin valores por defecto ni backfill. Una FK compuesta garantiza la pertenencia del subservicio al servicio; las eliminaciones son Restrict. Los CHECK validan duraciones y el índice único (ServicioOdontologicoId, Nombre) incluye inactivos. Las comparaciones de nombres conservan la collation del proveedor y Trim del formulario.
+
+En Fase A estas columnas prepararon el esquema y permitieron citas sin subservicio ni duración. ServicioOdontologico es el agrupador; su duración permanece como propiedad/columna legacy por compatibilidad, sin binding en ServicioFormViewModel ni visualización o edición en Servicios. Edit conserva el valor histórico y Create deja el campo legacy nulo. La duración operativa pertenece al procedimiento SubservicioOdontologico y se copia al snapshot de Cita al crearla. Tratamiento continúa asociado al servicio principal.
+
+### Integración de citas — Fase B
+
+Las nuevas citas requieren SubservicioOdontologicoId en CitaFormViewModel. GET Create carga odontólogos y servicios activos, sin consultar todos los subservicios. GET /Subservicios/ParaCitas?servicioOdontologicoId={id}, autorizado para Administrador y Recepcionista, devuelve únicamente ID, nombre y duración de hijos activos ordenados por nombre; devuelve 404 si el servicio no existe o está inactivo.
+
+POST Create verifica en BD servicio activo, subservicio activo, pertenencia exacta y duración entre 1 y 1440 minutos, además de paciente, odontólogo y conflicto H4. Copia la duración del catálogo a DuracionProgramadaMinutos; el ViewModel no admite duración del cliente. Un POST inválido reconstruye las opciones del servicio y conserva únicamente selecciones válidas. Las citas históricas pueden conservar NULL; Details muestra «No registrado».
+
+El script dedicado citas-subservicios.js mantiene separado el selector dependiente del autocomplete existente: limpia la selección al cambiar servicio, cancela con AbortController y comprueba tanto la petición vigente como el servicio actual antes de aplicar resultados o errores. Index conserva sus seis columnas; el procedimiento y snapshot se consultan en Details.
+
+Reagendar solo cambia fecha/hora y conserva servicio, subservicio y snapshot incluso después de modificar el catálogo. No hay nueva migración. H3/H4 permanecen intactos: HasScheduleConflictAsync sigue usando mismo odontólogo + mismo inicio + estado distinto de Cancelada. En esa fase H8 y la detección de intervalos seguían pendientes; véase H8 al final.
+
+El seeder provisional histórico requiere sus 10 padres originales y conserva sus reglas transaccionales. Tras el cierre de implantación no tiene botón ni acción LoadInitialCatalog; permanece únicamente como infraestructura legacy. No se ejecuta en Program.
+
+El catálogo provisional legacy contiene exactamente 45 subservicios. Sus duraciones son parámetros operativos de MSDentalSys, no información oficial clínica. CodigoCatalogo es una identidad técnica nullable, única cuando está presente y no editable desde el formulario. Permite reconocer entradas renombradas y no recrearlas. La carga vincula registros coincidentes existentes sin modificar nombre, descripción, duración o estado; conserva registros manuales. Los códigos existentes no deben renumerarse en cambios futuros del catálogo. La carga controlada debe ejecutarse por un administrador a la vez.
+
+La migración AddSubserviciosOdontologicos debe aplicarse mediante el procedimiento habitual de despliegue antes de utilizar el catálogo; el seeder no ejecuta migraciones ni EnsureCreated. No existe componente de precios, costos, tarifas ni facturación.
+
+### Clasificación de subservicios — Fase 1
+
+ClasificacionSubservicio se define en Data/Models con Principal = 1 y Complementario = 2. SubservicioOdontologico.Clasificacion es nullable y se convierte a entero; CK_Subservicios_Clasificacion permite únicamente NULL, 1 o 2. AddClasificacionToSubservicios agrega columna y CHECK sin default, backfill ni cambios a relaciones, índices o catálogo.
+
+El ViewModel requiere clasificación y SubserviciosController valida explícitamente los dos valores permitidos tanto en Create como en Edit. Edit GET permite históricos NULL; guardar exige clasificarlos. El selector compartido en _Fields sirve a Create/Edit y Details muestra «Sin clasificar» para NULL. Index conserva sus cinco columnas para no ensanchar la tabla compartida con Details de Servicios; la clasificación se consulta en Details del subservicio.
+
+El seeder provisional permanece intacto y crea sus registros con NULL; no se asigna clasificación masivamente. Activación, autorización y selección para Citas conservan su comportamiento, sin filtros por clasificación. No cambian duración, códigos, FK compuesta, snapshot de citas, Reagendar ni H3/H4. Esta fase no carga procedimientos; En esa fase H8 seguía pendiente.
+
+### Servicios definitivos — Fase 2A
+
+ServicioCatalogoSeeder contiene las 12 categorías objetivo. La acción temporal Servicios/PrepareCatalog fue retirada al cerrar la implantación; el seeder permanece interno. No hay ejecución en startup ni migración. Valida los IDs 1–5 contra sus nombres históricos o definitivos permitidos; no usa coincidencias aproximadas. Para los siete restantes admite el nombre objetivo con diferencias de mayúsculas o espacios exteriores. Rechaza coincidencias múltiples incluso inactivas, IDs históricos ausentes/reutilizados y cualquier servicio ajeno al conjunto objetivo. Este último caso requiere revisión explícita, sin eliminar datos.
+
+Tras validar todo, conserva IDs, fechas, descripciones y duración legacy; normaliza nombres y activa los objetivos, creando solo los ausentes con los defaults de la entidad. La segunda ejecución devuelve que el catálogo ya está actualizado. Se utiliza transacción Serializable desde la lectura hasta el commit para impedir duplicados entre cargas concurrentes; un conflicto de BD aborta con mensaje controlado. Ante cualquier fallo se hace rollback y se limpia el tracking. No se modifican relaciones, subservicios, citas ni tratamientos.
+
+La conciliación conserva 1 Periodoncia, 2 Odontología general, 3 Endodoncia, 4 Cirugía oral y 5 Rehabilitación oral / Prótesis. Completa con Odontología estética, Implantología, Ortodoncia, Odontopediatría, Odontología preventiva, Odontología digital y Odontología para pacientes con necesidades especiales. Esta operación prepara solamente servicios; la Fase 2B incorpora el cargador separado de procedimientos.
+
+### Procedimientos definitivos — Fase 2B
+
+Data/InitialData/SubservicioCatalogo.cs contiene 139 entradas inmutables con códigos explícitos permanentes, padre, nombre, descripción, clasificación y minutos. No se generan códigos a partir de la posición. SubservicioCatalogoSeeder valida 139 códigos únicos y completos, 85 Principal/54 Complementario, nombres/descripciones con límites del modelo, pares padre/nombre únicos y duración 1–1440 antes de iniciar la carga.
+
+La transacción Serializable abarca lectura, validación, conciliación y commit. Comprueba los 12 padres activos de Fase 2A, incluidos sus IDs históricos; valida subservicios 1–5, códigos y colisiones de nombre mediante consultas con la collation de BD, incluidos inactivos. IDs 1/3 solo aceptan su identidad histórica aprobada o su código definitivo en el mismo ID. IDs 2/4/5 deben conservar nombre, padre, duración, clasificación NULL y código NULL; solo se inactivan. Registros ajenos al conjunto aprobado provocan aborto para evitar mezclar catálogos. Ante fallo se revierte todo y se limpia el tracking.
+
+Para códigos ya conocidos se exige padre y nombre compatibles: no se trasladan códigos ni se cambian IDs. La política conservadora rechaza diferencias de nombre; descripción, clasificación, minutos y estado pueden reconciliarse. Las dos conversiones históricas autorizadas sí cambian nombre y asignan código. Se conservan fechas e IDs; no hay actualizaciones de Cita ni Tratamiento. El nombre mostrado en citas históricas refleja el nuevo nombre del catálogo en IDs 1/3; su snapshot de duración permanece intacto.
+
+El catálogo definitivo ya está implantado. Se retiraron las acciones PrepareCatalog, PrepareDefinitiveCatalog y LoadInitialCatalog, sus botones y textos auxiliares. ServicioCatalogoSeeder, SubservicioCatalogoSeeder y SubservicioCatalogo permanecen internos para pruebas, reconstrucción controlada y futura instalación. La gestión cotidiana utiliza el CRUD normal; no hay endpoint alternativo de carga ni ampliación de permisos. No se ejecuta desde Program, no hay migración, SQL manual ni eliminación física. Las duraciones son bloques operativos de agenda, no tiempos clínicos obligatorios. Las relaciones, selección Servicio → Subservicio, Reagendar y H3/H4 no cambian; En esa fase H8 continuaba pendiente.
+# H8 — reserva por intervalos
+
+`CitasController.HasScheduleConflictAsync` recibe odontólogo, inicio, duración nullable e ID a excluir. Create usa la duración validada del subservicio de BD (1–1440 minutos); Reagendar usa exclusivamente el snapshot existente. El candidato se limita a inicios desde `nuevoInicio - 1440 minutos` hasta antes de `nuevoFin`, acotando DateTime.MinValue. Se proyectan inicio y snapshot dentro de Serializable y se comparan ticks para evitar desbordar el fin de citas existentes. El fin nuevo se valida antes de abrir la transacción. El CHECK existente limita la duración máxima; no se crea migración.
+
+Cada operación mantiene la lectura de conflictos y su INSERT/UPDATE en la misma transacción Serializable hasta commit. Reagendar conserva la lectura inicial y la condición H3 por ID, estado e inicio originales: cero filas revierte y comunica concurrencia. Se excluye la propia cita. El índice H4 filtrado permanece intacto como protección adicional de inicio exacto. Las validaciones de formulario y catálogo preceden la transacción.
+
+NULL en cualquiera de las duraciones implica comprobar solamente inicio idéntico; no se modifica información histórica. Cancelada no ocupa agenda; los demás estados conservan sus reglas. SQL Server 1205 se maneja como contención, sin retry: el servidor ya revirtió la transacción víctima. Create descarta la entidad Added rechazada y reconstruye las opciones. Solo errores del índice H4 se convierten en su conflicto específico; otros errores se propagan. Las pruebas SQLite no demuestran bloqueos/rangos de SQL Server: la prueba real es opcional y aislada.

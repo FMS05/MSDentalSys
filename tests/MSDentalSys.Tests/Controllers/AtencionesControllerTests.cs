@@ -14,6 +14,98 @@ namespace MSDentalSys.Tests.Controllers;
 
 public class AtencionesControllerTests
 {
+    [Fact]
+    public async Task Create_ModelStateInvalido_CitaAjena_DevuelveForbidSinExponerDatos()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var cita = await database.AddAppointmentAsync("Pendiente", database.OtherOdontologistId);
+        database.Context.ChangeTracker.Clear();
+        var controller = database.CreateController("Odontologo", database.OdontologistId);
+        var model = new AtencionOdontologicaCreateViewModel { CitaId = cita.CitaId };
+        controller.ModelState.AddModelError(nameof(model.MotivoConsulta), "El motivo es obligatorio.");
+
+        var result = await controller.Create(model);
+
+        Assert.IsType<ForbidResult>(result);
+        Assert.False(controller.ViewData.ContainsKey("Cita"));
+        Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
+        Assert.Equal("Pendiente", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
+    }
+
+    [Fact]
+    public async Task Create_ModelStateInvalido_CitaInexistente_DevuelveNotFound()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController("Odontologo", database.OdontologistId);
+        var model = new AtencionOdontologicaCreateViewModel { CitaId = 999999 };
+        controller.ModelState.AddModelError(nameof(model.MotivoConsulta), "El motivo es obligatorio.");
+
+        var result = await controller.Create(model);
+
+        Assert.IsType<NotFoundResult>(result);
+        Assert.False(controller.ViewData.ContainsKey("Cita"));
+        Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
+        Assert.Empty(await database.Context.Citas.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_ModelStateInvalido_CitaPropia_ReconstruyeFormularioSinGuardar()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var cita = await database.AddAppointmentAsync("Confirmada");
+        database.Context.ChangeTracker.Clear();
+        var controller = database.CreateController("Odontologo", database.OdontologistId);
+        var model = new AtencionOdontologicaCreateViewModel
+        {
+            CitaId = cita.CitaId,
+            Observaciones = "Conservar estas observaciones"
+        };
+        const string error = "El motivo es obligatorio.";
+        controller.ModelState.AddModelError(nameof(model.MotivoConsulta), error);
+
+        var result = await controller.Create(model);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Same(model, view.Model);
+        Assert.Equal(error, Assert.Single(view.ViewData.ModelState[nameof(model.MotivoConsulta)]!.Errors).ErrorMessage);
+        var loadedCita = Assert.IsType<Cita>(view.ViewData["Cita"]);
+        Assert.Equal(cita.CitaId, loadedCita.CitaId);
+        Assert.Equal(database.PatientId, loadedCita.Paciente.PacienteId);
+        Assert.Equal(database.OdontologistId, loadedCita.Odontologo.Id);
+        Assert.Equal(database.ServiceId, loadedCita.ServicioOdontologico.ServicioOdontologicoId);
+        Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
+        Assert.Equal("Confirmada", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
+    }
+
+    [Fact]
+    public async Task Create_ModelStateInvalido_Administrador_ReconstruyeFormularioSinGuardar()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var cita = await database.AddAppointmentAsync("Pendiente", database.OtherOdontologistId);
+        database.Context.ChangeTracker.Clear();
+        var controller = database.CreateController("Administrador", database.AdminId);
+        var model = new AtencionOdontologicaCreateViewModel
+        {
+            CitaId = cita.CitaId,
+            Observaciones = "Conservar estas observaciones"
+        };
+        const string error = "El motivo es obligatorio.";
+        controller.ModelState.AddModelError(nameof(model.MotivoConsulta), error);
+
+        var result = await controller.Create(model);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Same(model, view.Model);
+        Assert.Equal(error, Assert.Single(view.ViewData.ModelState[nameof(model.MotivoConsulta)]!.Errors).ErrorMessage);
+        var loadedCita = Assert.IsType<Cita>(view.ViewData["Cita"]);
+        Assert.Equal(cita.CitaId, loadedCita.CitaId);
+        Assert.Equal(database.PatientId, loadedCita.Paciente.PacienteId);
+        Assert.Equal(database.OtherOdontologistId, loadedCita.Odontologo.Id);
+        Assert.Equal(database.ServiceId, loadedCita.ServicioOdontologico.ServicioOdontologicoId);
+        Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
+        Assert.Equal("Pendiente", (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
+    }
+
     [Theory]
     [InlineData("Pendiente")]
     [InlineData("Confirmada")]
@@ -32,7 +124,7 @@ public class AtencionesControllerTests
 
         Assert.IsType<RedirectToActionResult>(result);
         var atencion = await database.Context.AtencionesOdontologicas.SingleAsync();
-        var storedAppointment = await database.Context.Citas.SingleAsync();
+        var storedAppointment = await database.Context.Citas.AsNoTracking().SingleAsync();
         Assert.Equal(cita.CitaId, atencion.CitaId);
         Assert.Equal(database.PatientId, atencion.PacienteId);
         Assert.Equal(database.OdontologistId, atencion.OdontologoId);
@@ -58,7 +150,7 @@ public class AtencionesControllerTests
 
         Assert.IsType<ViewResult>(result);
         Assert.Empty(await database.Context.AtencionesOdontologicas.ToListAsync());
-        Assert.Equal(status, (await database.Context.Citas.SingleAsync()).EstadoCita);
+        Assert.Equal(status, (await database.Context.Citas.AsNoTracking().SingleAsync()).EstadoCita);
     }
 
     [Fact]

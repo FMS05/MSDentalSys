@@ -17,7 +17,7 @@ namespace MSDentalSys.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.19")
+                .HasAnnotation("ProductVersion", "9.0.20")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -203,6 +203,9 @@ namespace MSDentalSys.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CitaId"));
 
+                    b.Property<int?>("DuracionProgramadaMinutos")
+                        .HasColumnType("int");
+
                     b.Property<string>("EstadoCita")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -228,15 +231,24 @@ namespace MSDentalSys.Data.Migrations
                     b.Property<int>("ServicioOdontologicoId")
                         .HasColumnType("int");
 
-                    b.HasKey("CitaId");
+                    b.Property<int?>("SubservicioOdontologicoId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("OdontologoId");
+                    b.HasKey("CitaId");
 
                     b.HasIndex("PacienteId");
 
-                    b.HasIndex("ServicioOdontologicoId");
+                    b.HasIndex("OdontologoId", "FechaHoraInicio")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Citas_Odontologo_FechaHoraInicio_NoCancelada")
+                        .HasFilter("[EstadoCita] <> 'Cancelada'");
 
-                    b.ToTable("Citas");
+                    b.HasIndex("ServicioOdontologicoId", "SubservicioOdontologicoId");
+
+                    b.ToTable("Citas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Citas_DuracionProgramada", "[DuracionProgramadaMinutos] IS NULL OR ([DuracionProgramadaMinutos] >= 1 AND [DuracionProgramadaMinutos] <= 1440)");
+                        });
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.Diagnostico", b =>
@@ -421,6 +433,60 @@ namespace MSDentalSys.Data.Migrations
                     b.HasKey("ServicioOdontologicoId");
 
                     b.ToTable("ServiciosOdontologicos");
+                });
+
+            modelBuilder.Entity("MSDentalSys.Data.Models.SubservicioOdontologico", b =>
+                {
+                    b.Property<int>("SubservicioOdontologicoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubservicioOdontologicoId"));
+
+                    b.Property<int?>("Clasificacion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodigoCatalogo")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("DuracionEstimadaMinutos")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Estado")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ServicioOdontologicoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubservicioOdontologicoId");
+
+                    b.HasIndex("CodigoCatalogo")
+                        .IsUnique()
+                        .HasFilter("[CodigoCatalogo] IS NOT NULL");
+
+                    b.HasIndex("ServicioOdontologicoId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Subservicios_Servicio_Nombre");
+
+                    b.ToTable("SubserviciosOdontologicos", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Subservicios_Clasificacion", "[Clasificacion] IS NULL OR [Clasificacion] IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_Subservicios_Duracion", "[DuracionEstimadaMinutos] >= 1 AND [DuracionEstimadaMinutos] <= 1440");
+                        });
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.Tratamiento", b =>
@@ -648,11 +714,19 @@ namespace MSDentalSys.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MSDentalSys.Data.Models.SubservicioOdontologico", "SubservicioOdontologico")
+                        .WithMany("Citas")
+                        .HasForeignKey("ServicioOdontologicoId", "SubservicioOdontologicoId")
+                        .HasPrincipalKey("ServicioOdontologicoId", "SubservicioOdontologicoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Odontologo");
 
                     b.Navigation("Paciente");
 
                     b.Navigation("ServicioOdontologico");
+
+                    b.Navigation("SubservicioOdontologico");
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.Diagnostico", b =>
@@ -685,6 +759,17 @@ namespace MSDentalSys.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Seguro");
+                });
+
+            modelBuilder.Entity("MSDentalSys.Data.Models.SubservicioOdontologico", b =>
+                {
+                    b.HasOne("MSDentalSys.Data.Models.ServicioOdontologico", "ServicioOdontologico")
+                        .WithMany("Subservicios")
+                        .HasForeignKey("ServicioOdontologicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ServicioOdontologico");
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.Tratamiento", b =>
@@ -777,6 +862,13 @@ namespace MSDentalSys.Data.Migrations
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.ServicioOdontologico", b =>
+                {
+                    b.Navigation("Citas");
+
+                    b.Navigation("Subservicios");
+                });
+
+            modelBuilder.Entity("MSDentalSys.Data.Models.SubservicioOdontologico", b =>
                 {
                     b.Navigation("Citas");
                 });
