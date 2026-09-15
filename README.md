@@ -12,7 +12,7 @@ El sistema busca centralizar la gestión de pacientes, citas, servicios odontol�
 
 - ASP.NET Core MVC
 - .NET 9
-- Entity Framework Core 9
+- Entity Framework Core 9.0.20
 - SQL Server
 - ASP.NET Core Identity
 - Razor Views
@@ -64,6 +64,7 @@ Puede consultar pacientes y servicios, consultar sus citas y actualizar los esta
 - Pacientes.
 - Citas.
 - Servicios odontológicos.
+- Subservicios odontológicos: duración estimada, clasificación y código de catálogo.
 - Administración de usuarios.
 - Seguros médicos.
 - Atención odontológica.
@@ -86,12 +87,15 @@ Cita
 ### Pacientes
 
 - La activación y desactivación es lógica; el registro no se elimina físicamente.
+- Solo el Administrador activa o desactiva pacientes. Administrador y Recepcionista gestionan su admisión, incluidos los antecedentes básicos; Odontologo puede consultarlos.
+- Se rechaza una fecha de nacimiento futura. Sexo admite `Femenino`, `Masculino`, `Otro` o ausencia; Embarazo se normaliza a NULL cuando no corresponde a `Femenino`.
 - Para pacientes de 18 años o más, la cédula es obligatoria.
 - Para pacientes menores de 18 años, la cédula es opcional.
 - La cédula contiene 11 dígitos y se guarda como `XXX-XXXXXXX-X`. Create/Edit agregan los guiones automáticamente; el servidor acepta también los 11 dígitos sin guiones, valida estructura y obligatoriedad por edad, normaliza y comprueba unicidad considerando ambas representaciones. Si no hay fecha de nacimiento, no se infiere mayoría de edad. No se verifica el dígito de control ni la existencia oficial.
 - Si un menor informa cédula, se aplican las validaciones de formato y unicidad.
 - Un paciente puede tener o no seguro médico; si tiene uno, debe seleccionarse un seguro válido del catálogo.
 - Los seguros inactivos no se utilizan para nuevas asociaciones.
+- Edit permite conservar el seguro histórico del paciente aunque esté inactivo.
 - Los seguros no se eliminan físicamente; se administran mediante activación y desactivación.
 
 ### Citas
@@ -100,11 +104,14 @@ Los estados utilizados son `Pendiente`, `Confirmada`, `Atendida`, `Cancelada` y 
 
 `Cancelada` y `Atendida` son estados finales. El sistema evita conflictos de horario para un mismo odontólogo y una cita cancelada no bloquea ese horario.
 
+Create busca únicamente pacientes activos mediante `BuscarPacientes`; Index utiliza `BuscarPacientesParaFiltro`, que incluye activos e inactivos para consulta histórica. Una cita solo pasa a `Atendida` al registrar la atención; el odontólogo únicamente puede marcar directamente `No asistió` en sus citas.
+
 ### Usuarios
 
 - Al crear usuarios se permiten los roles `Odontologo` y `Recepcionista`.
 - El administrador inicial está protegido frente a desactivación y cambio de rol.
 - La activación y desactivación de usuarios es lógica.
+- Create valida el correo y elimina espacios exteriores antes de guardarlo como Email/UserName; Edit conserva el correo existente. La creación con su rol y la edición con sus cambios de roles/SecurityStamp son unidades transaccionales.
 
 ### Servicios
 
@@ -128,7 +135,7 @@ Los estados utilizados son `Pendiente`, `Confirmada`, `Atendida`, `Cancelada` y 
 
 En ejecución normal, la aplicación utiliza SQL Server mediante Entity Framework Core. El acceso se centraliza en `ApplicationDbContext`. El proyecto `MSDentalSys.Data` contiene las migraciones existentes y `ApplicationDbContextFactory` permite crear el contexto para operaciones de design-time.
 
-Las cadenas de conexión, contraseñas y secretos no forman parte de esta documentación.
+Los ejemplos de conexión no contienen credenciales; las contraseñas y secretos se configuran fuera del repositorio.
 
 ## Configuración
 
@@ -167,7 +174,9 @@ dotnet run --project .\src\MSDentalSys.Web -- --environment Development
 
 Aplicar migraciones existentes es necesario al preparar una base nueva y al recibir cambios de esquema. EF registra las aplicadas en `__EFMigrationsHistory`; no requiere una copia física de otra base. La aplicación no aplica migraciones automáticamente.
 
-Al iniciar Web se ejecutan los seeders de roles, administrador inicial y seguros, salvo en Testing. El esquema debe existir primero. `SeedAdmin:Password` se necesita para crear el administrador si todavía no existe; no cambia su contraseña si ya existe. La fábrica de EF CLI no ejecuta seeders.
+Al iniciar Web se ejecutan únicamente `RoleSeeder`, `AdminSeeder` y `SeguroSeeder`, salvo en Testing. El esquema debe existir primero. `SeedAdmin:Password` se necesita para crear el administrador si todavía no existe; no cambia su contraseña si ya existe. La fábrica de EF CLI no ejecuta seeders.
+
+Las seis migraciones actuales crean/evolucionan el esquema, pero no insertan el catálogo odontológico definitivo. Una instalación nueva tampoco lo recibe mediante startup. Los cargadores definitivos internos requieren las identidades históricas del proyecto y no son instaladores genéricos desde cero. Véase [datos iniciales y alcance de instalación](docs/arquitectura.md#datos-iniciales).
 
 ### Generar una migración
 
@@ -195,8 +204,10 @@ dotnet ef migrations list --no-connect --project .\src\MSDentalSys.Data --startu
 
 Se requiere una conexión SQL Server correctamente configurada para ejecutar la aplicación normalmente.
 
+Las dependencias directas están fijadas en los `.csproj`; EF Core e Identity utilizan 9.0.20. Data, Web y Tests versionan sus `packages.lock.json`. La restauración puede validarse con `dotnet restore --locked-mode`; ese modo no está habilitado globalmente. Las versiones y su mantenimiento se describen en [arquitectura](docs/arquitectura.md#dependencias-y-restauración).
+
 ```powershell
-dotnet restore
+dotnet restore --locked-mode
 dotnet build .\MSDentalSys.sln
 dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 ```
@@ -205,9 +216,9 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado actual: **212 pruebas correctas**, incluidas las comprobaciones de la fábrica, del bloqueo de Identity y de cédula sin SQL Server real.
+Estado final validado: **542 pruebas aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** en la ejecución estándar cuando no está configurada `MSDENTALSYS_H8_SQLSERVER`. Los resultados de etapas anteriores se conservan en [pruebas](docs/pruebas.md).
 
-Las pruebas de datos utilizan SQLite InMemory y no utilizan `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en el entorno `Testing`, con una base SQLite aislada y un esquema de autenticación exclusivo para Tests.
+La suite estándar utiliza SQLite InMemory y no utiliza `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en `Testing`: claims controlados para autorización y cookies reales de Identity para revocación de sesiones, siempre con datos de pruebas aislados. H8 dispone además de una prueba SQL Server opcional con configuración explícita.
 
 ```powershell
 dotnet test .\MSDentalSys.sln
@@ -216,6 +227,8 @@ dotnet test .\MSDentalSys.sln
 ## Seguridad
 
 ASP.NET Core Identity bloquea temporalmente la cuenta durante 60 segundos al alcanzar cinco intentos fallidos consecutivos de inicio de sesión. La política aplica a todos los usuarios internos (Administrador, Odontologo y Recepcionista) con `LockoutEnabled` habilitado. Un acceso correcto antes del límite reinicia el contador; durante el bloqueo se rechaza incluso la contraseña correcta. Las cuentas nuevas creadas mediante UserManager tienen el bloqueo habilitado; esta configuración no corrige cuentas históricas que lo tengan deshabilitado.
+
+La contraseña exige al menos ocho caracteres, dígito, mayúscula, minúscula y carácter no alfanumérico. `Program.cs` no exige cuenta confirmada. Una desactivación efectiva o un cambio efectivo de rol renueva `SecurityStamp`; las cookies se revalidan periódicamente cada minuto, no de forma instantánea en cada petición. Reactivar conserva el stamp renovado, sin restaurar las cookies anteriores. Véase [seguridad y autorización](docs/arquitectura.md#seguridad-y-autorización).
 
 - ASP.NET Core Identity gestiona usuarios y contraseñas.
 - La autorización se define mediante `[Authorize]` y roles.
@@ -227,33 +240,36 @@ ASP.NET Core Identity bloquea temporalmente la cuenta durante 60 segundos al alc
 
 ## Estado actual del proyecto
 
-Los módulos administrativos y clínicos indicados en esta documentación están implementados y validados mediante pruebas automatizadas. El proyecto se encuentra en una etapa avanzada y de cierre técnico; aún pueden existir mejoras funcionales, de usabilidad, documentación y despliegue antes de considerarlo completamente finalizado.
+El alcance funcional está cerrado. La [matriz H1–H16](docs/arquitectura.md#matriz-de-cierre-h1h16) identifica las correcciones y su evidencia; [pruebas](docs/pruebas.md) distingue el resultado final de los hitos históricos. Este cierre no certifica el contenido ni el despliegue de una BD concreta.
 
-## Autor / contexto académico
+La raíz `/` redirige al anónimo a Login y al autenticado a Dashboard. `/Home/Privacy` fue retirado y devuelve 404; `/Home/Error` se conserva para manejo controlado de errores.
 
-Proyecto desarrollado como parte del monográfico para optar por el título de Licenciatura en Informática en la Universidad Autónoma de Santo Domingo (UASD).
+## Subservicios y catálogo odontológico
 
-### Subservicios odontológicos (Fase A)
+Desde el detalle de un servicio se consulta su catálogo de procedimientos. Solo el Administrador puede crear, editar nombre/descripción/duración/clasificación y activar o desactivar subservicios; el padre permanece fijo. Recepcionista y Odontologo tienen consulta.
 
-Desde el detalle de un servicio se consulta su catálogo de procedimientos. Solo el Administrador puede crear, editar nombre/descripción/duración y activar o desactivar subservicios; el padre permanece fijo. Recepcionista y Odontologo tienen consulta.
-
-La Fase 1 de clasificación agrega Principal y Complementario. Create y Edit requieren una selección válida; los registros históricos pueden permanecer temporalmente «Sin clasificar» hasta su edición. La migración aditiva AddClasificacionToSubservicios incorpora una columna nullable y su CHECK, sin clasificar datos existentes. Debe aplicarse antes de ejecutar esta versión contra una BD existente. Esta preparación no carga el catálogo definitivo de 139 procedimientos ni modifica el catálogo provisional, las citas o H8.
+Create y Edit requieren Principal o Complementario; los registros históricos pueden permanecer «Sin clasificar» hasta su edición. `CodigoCatalogo` es una identidad técnica nullable, única cuando existe y no editable en el formulario. La evolución del esquema y las fases anteriores se explican en [arquitectura](docs/arquitectura.md#subservicios-odontológicos--fase-a).
 
 El seeder histórico conserva 45 procedimientos provisionales y sus datos originales. Desde Fase 2A su carga administrativa está deshabilitada y el botón fue retirado; no constituye el catálogo definitivo ni se ejecuta al arrancar.
 
-ServicioCatalogoSeeder permanece como infraestructura interna para reconstrucción controlada, pruebas y futura instalación, sin endpoint web. Se validan y conservan los IDs históricos 1 Periodoncia, 2 Odontología General, 3 Endodoncia, 4 Cirugía Bucal y 5 Rehabilitación Oral; los nombres de 2/4/5 pasan a Odontología general, Cirugía oral y Rehabilitación oral / Prótesis. Se crean, si faltan, Odontología estética, Implantología, Ortodoncia, Odontopediatría, Odontología preventiva, Odontología digital y Odontología para pacientes con necesidades especiales. Los 12 quedan activos. La operación es transaccional e idempotente y aborta ante identidades incompatibles, duplicados o servicios ajenos; no elimina ni concilia subservicios. La carga de procedimientos se implementa separadamente en Fase 2B.
+Los cargadores internos de servicios y procedimientos permiten conciliación controlada sobre las identidades históricas previstas. No tienen endpoint web ni se ejecutan en startup. Sus precondiciones, transacciones y reglas legacy se detallan en arquitectura.
 
 Cita tiene dos columnas nullable (SubservicioOdontologicoId y DuracionProgramadaMinutos), sin completar datos históricos. Desde Fase B, las nuevas citas requieren un subservicio activo del servicio activo seleccionado; su duración se copia desde BD como snapshot. Reagendar conserva servicio, subservicio y snapshot aunque cambie el catálogo. Details muestra «No registrado» para datos históricos nulos. H8 está implementado (véase la sección H8); H3/H4 se conservan. La duración del servicio principal permanece como legacy en entidad/BD y no se administra ni muestra en Servicios. El flujo de tratamientos no cambia. No existe componente económico.
 
-### Catálogo definitivo — Fase 2B
+### Catálogo fuente y registro histórico de implantación
 
 SubservicioCatalogo define explícitamente 139 procedimientos de los 12 servicios: 85 Principal y 54 Complementario, con códigos permanentes MSCD-PROC-0001 a MSCD-PROC-0139. Los nombres y clasificación provienen del catálogo definido para la clínica; descripciones y duraciones son configuración funcional del sistema. Las duraciones corresponden a bloques operativos utilizados para la programación de citas y no representan tiempos clínicos obligatorios.
 
-SubservicioCatalogoSeeder permanece como infraestructura interna, sin endpoint web. Requiere los 12 servicios preparados. Reutiliza IDs 1 y 3 como MSCD-PROC-0001/0076; conserva IDs 2/4/5 como legado cambiando únicamente su estado a inactivo. Partiendo de los cinco históricos crea 137 filas: resultado 142 totales, 139 definitivos activos y tres legados inactivos. La carga es explícita, transaccional e idempotente, nunca automática en startup. No se mezclan registros ajenos ni el catálogo provisional de 45.
+Partiendo de los cinco procedimientos históricos compatibles, `SubservicioCatalogoSeeder` reutiliza IDs 1 y 3 como MSCD-PROC-0001/0076 y crea 137 filas: 139 definitivos activos y tres legados inactivos, 142 en total. Los IDs legacy 2/4/5 conservan su clasificación existente, sin exigir NULL, y quedan inactivos. La conciliación rechaza registros ajenos y no mezcla el catálogo provisional de 45.
 
-Una repetición valida identidad por código, padre y nombre; puede restablecer descripción, clasificación, duración y estado definidos por el catálogo. Un nombre incompatible requiere revisión y provoca aborto, no un renombre silencioso. Las citas conservan IDs y snapshots aunque se actualice la duración del catálogo. El catálogo definitivo ya está implantado: 12 servicios, 139 procedimientos definitivos activos y tres legados inactivos. Los controles y endpoints técnicos PrepareCatalog, PrepareDefinitiveCatalog y LoadInitialCatalog fueron retirados. La operación cotidiana utiliza el CRUD normal con los permisos existentes. Los seeders internos no se ejecutan en startup; el provisional de 45 permanece como legacy para pruebas históricas. Este cierre no modifica datos, no requiere migración y no implementa H8.
-# H8 — prevención de solapamientos
+La documentación histórica registra una implantación en la BD utilizada durante esa etapa; no permite determinar el contenido actual de cualquier BD operativa. El catálogo fuente versionado y las pruebas de conciliación son verificables en Git; una instalación nueva requiere preparación adicional que los cargadores actuales no resuelven desde cero. Se retiraron PrepareCatalog, PrepareDefinitiveCatalog y LoadInitialCatalog; la operación cotidiana utiliza el CRUD normal. Aquel cierre no implementó H8: H8 se implementó y cerró posteriormente.
+
+## H8 — prevención de solapamientos
 
 Create y Reagendar comprueban intervalos `[inicio, fin)` por odontólogo: `nuevaInicio < existenteFin && existenteInicio < nuevaFin`. Horarios contiguos se permiten; todos los estados excepto Cancelada ocupan agenda. El conflicto muestra: «El horario seleccionado se superpone con otra cita del odontólogo. Selecciona una hora diferente.»
 
 La consulta y escritura se ejecutan en una transacción Serializable. Se conservan H3, el índice H4 `UX_Citas_Odontologo_FechaHoraInicio_NoCancelada` y los snapshots. Una duración histórica NULL solo permite detectar conflicto por inicio idéntico; no se infiere duración ni se rellenan históricos. No hay migración ni capas adicionales. SQL Server 1205 devuelve un mensaje de agenda ocupada sin retry automático. La validación concurrente real requiere configuración explícita de un servidor de pruebas; véase [pruebas](docs/pruebas.md).
+
+## Autor / contexto académico
+
+Proyecto desarrollado como parte del monográfico para optar por el título de Licenciatura en Informática en la Universidad Autónoma de Santo Domingo (UASD).
