@@ -5,10 +5,19 @@
     var selectedStatus = ViewData["Estado"]?.ToString();
     var selectedPatientId = ViewData["PacienteId"] as int?;
     var selectedPatientName = ViewData["PacienteNombre"]?.ToString() ?? string.Empty;
+    var selectedDentistId = ViewData["OdontologoId"]?.ToString();
+    var dentists = ViewData["Odontologos"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+        ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    var selectedView = ViewData["Vista"]?.ToString() == "lista" ? "lista" : "calendario";
+    var isCalendar = selectedView == "calendario";
+    var canChooseDentist = !User.IsInRole("Odontologo")
+        && (User.IsInRole("Administrador") || User.IsInRole("Recepcionista"));
     var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
 }
 
-<div class="appointment-page">
+<link rel="stylesheet" href="~/css/citas-calendario.css" asp-append-version="true" />
+
+<div class="appointment-page citas-calendar-page">
     @if (TempData["SuccessMessage"] is string successMessage)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -37,12 +46,13 @@
     </div>
 
     <div class="appointment-filters">
-        <form asp-action="Index" method="get" class="row g-2 align-items-end">
-            <div class="col-12 col-md-3">
+        <form id="citas-filtros" asp-action="Index" method="get" class="row g-2 align-items-end">
+            <input type="hidden" name="vista" value="@selectedView" />
+            <div class="col-12 col-sm-6 col-lg-2">
                 <label for="fecha" class="form-label">Fecha</label>
-                <input type="date" id="fecha" name="fecha" value="@selectedDate" class="form-control" />
+                <input type="date" id="fecha" name="fecha" value="@selectedDate" class="form-control" aria-describedby="@(isCalendar ? "calendario-fecha-ayuda" : null)" />
             </div>
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-sm-6 col-lg-2">
                 <label for="estado" class="form-label">Estado</label>
                 <select id="estado" name="estado" class="form-select">
                     <option value="">Todos los estados</option>
@@ -52,20 +62,56 @@
                     }
                 </select>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-6 col-lg-3">
                 <label for="PacienteBusqueda" class="form-label">Paciente</label>
                 <input id="pacienteId" name="pacienteId" type="hidden" value="@(selectedPatientId?.ToString() ?? string.Empty)" />
                 <input id="PacienteBusqueda" name="PacienteNombre" value="@selectedPatientName" class="form-control" autocomplete="off" placeholder="Buscar por nombre, apellido o c&eacute;dula..." aria-controls="patient-search-results" aria-autocomplete="list" />
                 <div id="patient-search-results" class="list-group mt-2" role="listbox" hidden></div>
             </div>
-            <div class="col-12 col-md-2 d-flex gap-2">
+            @if (canChooseDentist)
+            {
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label for="odontologoId" class="form-label">Odontólogo</label>
+                    <select id="odontologoId" name="odontologoId" class="form-select">
+                        <option value="">Todos los odontólogos</option>
+                        @foreach (var dentist in dentists)
+                        {
+                            <option value="@dentist.Value" selected="@(selectedDentistId == dentist.Value ? "selected" : null)">@dentist.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-12 col-md-auto col-lg-2 d-flex gap-2">
                 <button type="submit" class="btn btn-ms-primary flex-grow-1">Filtrar</button>
-                <a asp-action="Index" class="btn btn-outline-secondary" title="Limpiar filtros">×</a>
+                <a asp-action="Index" asp-route-vista="@selectedView" class="btn btn-outline-secondary" title="Limpiar filtros" aria-label="Limpiar filtros">×</a>
             </div>
         </form>
     </div>
 
-    <div class="appointment-table-card">
+    <nav class="calendar-view-switch mb-3" aria-label="Visualización de citas">
+        <a asp-action="Index" asp-route-vista="calendario" asp-route-fecha="@selectedDate" asp-route-estado="@selectedStatus" asp-route-pacienteId="@selectedPatientId" asp-route-odontologoId="@selectedDentistId"
+           class="btn @(isCalendar ? "btn-ms-primary" : "btn-outline-secondary")" aria-current="@(isCalendar ? "page" : null)" data-calendar-view="calendario">Calendario</a>
+        <a asp-action="Index" asp-route-vista="lista" asp-route-fecha="@selectedDate" asp-route-estado="@selectedStatus" asp-route-pacienteId="@selectedPatientId" asp-route-odontologoId="@selectedDentistId"
+           class="btn @(!isCalendar ? "btn-ms-primary" : "btn-outline-secondary")" aria-current="@(!isCalendar ? "page" : null)" data-calendar-view="lista">Lista</a>
+    </nav>
+
+    @if (isCalendar)
+    {
+        <section class="appointment-calendar-card" aria-label="Calendario de citas">
+            <p class="calendar-guidance">Consulta las citas registradas y abre sus detalles al seleccionarlas. Los espacios vacíos y los filtros no garantizan disponibilidad.</p>
+            <p id="calendario-fecha-ayuda" class="calendar-duration-note">Fecha sitúa el calendario en el período elegido; en Lista filtra las citas de ese día.</p>
+            <p class="calendar-duration-note">“Duración no registrada”: se muestra un bloque visual de 15 minutos; su duración clínica es desconocida. Las canceladas son historial y no ocupan agenda.</p>
+            <div id="calendario-error" class="alert alert-danger" role="alert" hidden>
+                <span id="calendario-error-texto">No se pudieron cargar las citas.</span>
+                <button id="calendario-reintentar" type="button" class="btn btn-sm btn-outline-danger ms-2">Reintentar</button>
+            </div>
+            <p id="calendario-estado" class="calendar-query-status" role="status" aria-live="polite"></p>
+            <noscript><p class="alert alert-warning">Activa JavaScript para consultar el calendario o utiliza la vista Lista.</p></noscript>
+            <div id="citas-calendario" data-endpoint="@Url.Action("Calendario", "Citas")" data-fecha="@selectedDate" aria-label="Agenda mensual y semanal"></div>
+        </section>
+    }
+
+    <div class="appointment-table-card" hidden="@(isCalendar ? "hidden" : null)">
         <div class="table-responsive">
             <table class="table appointment-table align-middle mb-0">
                 <thead>
@@ -160,6 +206,7 @@
                         search.value = patient.nombreCompleto;
                         selectedName = patient.nombreCompleto;
                         hiddenId.value = patient.id;
+                        hiddenId.dispatchEvent(new Event('change', { bubbles: true }));
                         clearResults();
                     });
                     results.appendChild(option);
@@ -171,7 +218,10 @@
             search?.addEventListener('input', () => {
                 cancelSearch();
                 clearResults();
-                if (search.value !== selectedName) hiddenId.value = '';
+                if (search.value !== selectedName && hiddenId.value) {
+                    hiddenId.value = '';
+                    hiddenId.dispatchEvent(new Event('change', { bubbles: true }));
+                }
 
                 const term = search.value.trim();
                 if (term.length < 1) return;
@@ -195,7 +245,10 @@
             });
 
             form?.addEventListener('submit', () => {
-                if (!search.value.trim() || search.value !== selectedName) hiddenId.value = '';
+                if ((!search.value.trim() || search.value !== selectedName) && hiddenId.value) {
+                    hiddenId.value = '';
+                    hiddenId.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             });
 
             document.addEventListener('click', event => {
@@ -206,4 +259,12 @@
             });
         })();
     </script>
+    @if (isCalendar)
+    {
+        <script src="~/lib/fullcalendar/core/index.global.min.js" asp-append-version="true"></script>
+        <script src="~/lib/fullcalendar/daygrid/index.global.min.js" asp-append-version="true"></script>
+        <script src="~/lib/fullcalendar/timegrid/index.global.min.js" asp-append-version="true"></script>
+        <script src="~/lib/fullcalendar/core/locales/es.global.min.js" asp-append-version="true"></script>
+    }
+    <script src="~/js/citas-calendario.js" asp-append-version="true"></script>
 }
