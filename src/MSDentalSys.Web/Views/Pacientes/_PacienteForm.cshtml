@@ -1,9 +1,29 @@
 ﻿@model MSDentalSys.Web.Models.ViewModels.PacienteFormViewModel
 @{
     var formAction = ViewData["FormAction"]?.ToString() ?? "Create";
+    var tabs = new[]
+    {
+        new
+        {
+            Id = "datos",
+            Fields = new[] { nameof(Model.Nombre), nameof(Model.Apellido), nameof(Model.Cedula), nameof(Model.FechaNacimiento), nameof(Model.Sexo), nameof(Model.Telefono), nameof(Model.Correo), nameof(Model.Direccion) }
+        },
+        new
+        {
+            Id = "seguro",
+            Fields = new[] { nameof(Model.TieneSeguro), nameof(Model.SeguroId), nameof(Model.ContactoEmergencia), nameof(Model.TelefonoEmergencia) }
+        },
+        new
+        {
+            Id = "antecedentes",
+            Fields = new[] { nameof(Model.Alergias), nameof(Model.EnfermedadesSistemicas), nameof(Model.MedicamentosActuales), nameof(Model.CirugiasPrevias), nameof(Model.HabitosRelevantes), nameof(Model.Embarazo), nameof(Model.Observaciones) }
+        }
+    };
+    var activeTab = tabs.FirstOrDefault(tab => tab.Fields.Any(field =>
+        ViewData.ModelState.TryGetValue(field, out var state) && state.Errors.Count > 0))?.Id ?? "datos";
 }
 
-<form asp-action="@formAction" method="post" autocomplete="off">
+<form id="paciente-form" asp-action="@formAction" method="post" autocomplete="off">
     @if (Model.PacienteId > 0)
     {
         <input asp-for="PacienteId" type="hidden" />
@@ -12,168 +32,170 @@
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
     <p class="text-muted small mb-3"><span class="text-danger">*</span> Campos obligatorios</p>
 
-    <div class="form-section">
-        <div class="form-section-heading">
-            <span class="section-number">01</span>
-            <div>
-                <h2>Datos personales</h2>
-                <p>Información básica del paciente.</p>
-            </div>
-        </div>
-
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label asp-for="Nombre" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
-                <input asp-for="Nombre" class="form-control" autocomplete="off" />
-                <span asp-validation-for="Nombre" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="Apellido" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
-                <input asp-for="Apellido" class="form-control" autocomplete="off" />
-                <span asp-validation-for="Apellido" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="Cedula" class="form-label"></label><span id="cedula-required" class="text-danger" aria-hidden="true" hidden> *</span>
-                <input asp-for="Cedula" type="text" inputmode="numeric" maxlength="13" class="form-control" autocomplete="off" placeholder="XXX-XXXXXXX-X" aria-required="false" aria-describedby="cedula-help" data-today="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                <small id="cedula-help" class="form-text text-muted">Opcional. Obligatoria a partir de los 18 años.</small>
-                <span asp-validation-for="Cedula" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="FechaNacimiento" class="form-label"></label>
-                <input asp-for="FechaNacimiento" class="form-control" autocomplete="off" />
-                <span asp-validation-for="FechaNacimiento" class="text-danger"></span>
-            </div>
-            <div class="col-md-4">
-                <label asp-for="Sexo" class="form-label"></label>
-                <select asp-for="Sexo" class="form-select" autocomplete="off">
-                    <option value="">No especificado</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Otro">Otro</option>
-                </select>
-                <span asp-validation-for="Sexo" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="Telefono" class="form-label"></label>
-                <input asp-for="Telefono" class="form-control" autocomplete="off" />
-                <span asp-validation-for="Telefono" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="Correo" class="form-label"></label>
-                <input asp-for="Correo" class="form-control" autocomplete="off" />
-                <span asp-validation-for="Correo" class="text-danger"></span>
-            </div>
-            <div class="col-12">
-                <label asp-for="Direccion" class="form-label"></label>
-                <textarea asp-for="Direccion" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="Direccion" class="text-danger"></span>
-            </div>
-        </div>
+    <div class="nav nav-tabs mb-4" role="tablist" aria-label="Información del paciente">
+        <button class="nav-link @(activeTab == "datos" ? "active" : null)" id="paciente-datos-tab" type="button" data-bs-toggle="tab" data-bs-target="#paciente-datos-panel" role="tab" aria-controls="paciente-datos-panel" aria-selected="@(activeTab == "datos" ? "true" : "false")" tabindex="@(activeTab == "datos" ? null : "-1")">Datos personales</button>
+        <button class="nav-link @(activeTab == "seguro" ? "active" : null)" id="paciente-seguro-tab" type="button" data-bs-toggle="tab" data-bs-target="#paciente-seguro-panel" role="tab" aria-controls="paciente-seguro-panel" aria-selected="@(activeTab == "seguro" ? "true" : "false")" tabindex="@(activeTab == "seguro" ? null : "-1")">Seguro y emergencia</button>
+        <button class="nav-link @(activeTab == "antecedentes" ? "active" : null)" id="paciente-antecedentes-tab" type="button" data-bs-toggle="tab" data-bs-target="#paciente-antecedentes-panel" role="tab" aria-controls="paciente-antecedentes-panel" aria-selected="@(activeTab == "antecedentes" ? "true" : "false")" tabindex="@(activeTab == "antecedentes" ? null : "-1")">Antecedentes clínicos</button>
     </div>
 
-    <div class="form-section">
-        <div class="form-section-heading">
-            <span class="section-number">02</span>
-            <div>
-                <h2>Seguro m&eacute;dico</h2>
-                <p>Registra la aseguradora del paciente, si corresponde.</p>
-            </div>
-        </div>
-        <div class="row g-3">
-            <div class="col-12">
-                <fieldset>
-                    <legend class="form-label mb-2">&iquest;Tiene seguro m&eacute;dico? <span class="text-danger" aria-hidden="true">*</span></legend>
-                    <div class="d-flex gap-4">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" id="tiene-seguro-si" name="TieneSeguro" value="true" checked="@(Model.TieneSeguro ? "checked" : null)" />
-                            <label class="form-check-label" for="tiene-seguro-si">S&iacute;</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" id="tiene-seguro-no" name="TieneSeguro" value="false" checked="@(!Model.TieneSeguro ? "checked" : null)" />
-                            <label class="form-check-label" for="tiene-seguro-no">No</label>
-                        </div>
+    <div class="tab-content">
+        <div class="tab-pane @(activeTab == "datos" ? "show active" : null)" id="paciente-datos-panel" role="tabpanel" aria-labelledby="paciente-datos-tab">
+            <div class="form-section">
+                <div class="form-section-heading">
+                    <span class="section-number">01</span>
+                    <div>
+                        <h2>Datos personales</h2>
+                        <p>Información básica del paciente.</p>
                     </div>
-                </fieldset>
-            </div>
-            <div id="seguro-selector" class="col-12" hidden="@(Model.TieneSeguro ? null : "hidden")">
-                <label asp-for="SeguroId" class="form-label">Seguro m&eacute;dico <span class="text-danger" aria-hidden="true">*</span></label>
-                <select asp-for="SeguroId" asp-items="Model.Seguros" class="form-select">
-                    <option value="">Selecciona un seguro</option>
-                </select>
-                <span asp-validation-for="SeguroId" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
+                </div>
 
-    <div class="form-section">
-        <div class="form-section-heading">
-            <span class="section-number">03</span>
-            <div>
-                <h2>Contacto de emergencia</h2>
-                <p>Una persona a contactar en caso de ser necesario.</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="Nombre" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
+                        <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="Nombre" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Apellido" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
+                        <input asp-for="Apellido" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="Apellido" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Cedula" class="form-label"></label><span id="cedula-required" class="text-danger" aria-hidden="true" hidden> *</span>
+                        <input asp-for="Cedula" type="text" inputmode="numeric" maxlength="13" class="form-control" autocomplete="off" placeholder="XXX-XXXXXXX-X" aria-required="false" aria-describedby="cedula-help" data-today="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <small id="cedula-help" class="form-text text-muted">Opcional. Obligatoria a partir de los 18 años.</small>
+                        <span asp-validation-for="Cedula" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="FechaNacimiento" class="form-label"></label>
+                        <input asp-for="FechaNacimiento" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="FechaNacimiento" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Sexo" class="form-label"></label>
+                        <select asp-for="Sexo" class="form-select" autocomplete="off">
+                            <option value="">No especificado</option>
+                            <option value="Femenino">Femenino</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                        <span asp-validation-for="Sexo" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Telefono" class="form-label"></label>
+                        <input asp-for="Telefono" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="Telefono" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Correo" class="form-label"></label>
+                        <input asp-for="Correo" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="Correo" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Direccion" class="form-label"></label>
+                        <textarea asp-for="Direccion" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="Direccion" class="text-danger"></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label asp-for="ContactoEmergencia" class="form-label"></label>
-                <input asp-for="ContactoEmergencia" class="form-control" autocomplete="off" />
-                <span asp-validation-for="ContactoEmergencia" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="TelefonoEmergencia" class="form-label"></label>
-                <input asp-for="TelefonoEmergencia" class="form-control" autocomplete="off" />
-                <span asp-validation-for="TelefonoEmergencia" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="form-section">
-        <div class="form-section-heading">
-            <span class="section-number">04</span>
-            <div>
-                <h2>Antecedentes clínicos</h2>
-                <p>Información relevante para la atención odontológica.</p>
+        <div class="tab-pane @(activeTab == "seguro" ? "show active" : null)" id="paciente-seguro-panel" role="tabpanel" aria-labelledby="paciente-seguro-tab">
+            <div class="form-section">
+                <div class="form-section-heading">
+                    <span class="section-number">02</span>
+                    <div>
+                        <h2>Seguro y emergencia</h2>
+                        <p>Seguro médico y contacto para emergencias.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <fieldset>
+                            <legend class="form-label mb-2">&iquest;Tiene seguro m&eacute;dico? <span class="text-danger" aria-hidden="true">*</span></legend>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="tiene-seguro-si" name="TieneSeguro" value="true" checked="@(Model.TieneSeguro ? "checked" : null)" />
+                                    <label class="form-check-label" for="tiene-seguro-si">S&iacute;</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="tiene-seguro-no" name="TieneSeguro" value="false" checked="@(!Model.TieneSeguro ? "checked" : null)" />
+                                    <label class="form-check-label" for="tiene-seguro-no">No</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div id="seguro-selector" class="col-12" hidden="@(Model.TieneSeguro ? null : "hidden")">
+                        <label asp-for="SeguroId" class="form-label">Seguro m&eacute;dico <span class="text-danger" aria-hidden="true">*</span></label>
+                        <select asp-for="SeguroId" asp-items="Model.Seguros" class="form-select">
+                            <option value="">Selecciona un seguro</option>
+                        </select>
+                        <span asp-validation-for="SeguroId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="ContactoEmergencia" class="form-label"></label>
+                        <input asp-for="ContactoEmergencia" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="ContactoEmergencia" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="TelefonoEmergencia" class="form-label"></label>
+                        <input asp-for="TelefonoEmergencia" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="TelefonoEmergencia" class="text-danger"></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label asp-for="Alergias" class="form-label"></label>
-                <textarea asp-for="Alergias" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="Alergias" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="EnfermedadesSistemicas" class="form-label"></label>
-                <textarea asp-for="EnfermedadesSistemicas" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="EnfermedadesSistemicas" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="MedicamentosActuales" class="form-label"></label>
-                <textarea asp-for="MedicamentosActuales" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="MedicamentosActuales" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="CirugiasPrevias" class="form-label"></label>
-                <textarea asp-for="CirugiasPrevias" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="CirugiasPrevias" class="text-danger"></span>
-            </div>
-            <div class="col-md-6">
-                <label asp-for="HabitosRelevantes" class="form-label"></label>
-                <textarea asp-for="HabitosRelevantes" class="form-control" autocomplete="off" rows="2"></textarea>
-                <span asp-validation-for="HabitosRelevantes" class="text-danger"></span>
-            </div>
-            <div id="embarazo-field" class="col-md-6">
-                <label asp-for="Embarazo" class="form-label"></label>
-                <select asp-for="Embarazo" class="form-select" autocomplete="off">
-                    <option value="">No especificado</option>
-                    <option value="true">Sí</option>
-                    <option value="false">No</option>
-                </select>
-                <span asp-validation-for="Embarazo" class="text-danger"></span>
-            </div>
-            <div class="col-12">
-                <label asp-for="Observaciones" class="form-label"></label>
-                <textarea asp-for="Observaciones" class="form-control" autocomplete="off" rows="3"></textarea>
-                <span asp-validation-for="Observaciones" class="text-danger"></span>
+
+        <div class="tab-pane @(activeTab == "antecedentes" ? "show active" : null)" id="paciente-antecedentes-panel" role="tabpanel" aria-labelledby="paciente-antecedentes-tab">
+            <div class="form-section">
+                <div class="form-section-heading">
+                    <span class="section-number">03</span>
+                    <div>
+                        <h2>Antecedentes clínicos</h2>
+                        <p>Información relevante para la atención odontológica.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="Alergias" class="form-label"></label>
+                        <textarea asp-for="Alergias" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="Alergias" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EnfermedadesSistemicas" class="form-label"></label>
+                        <textarea asp-for="EnfermedadesSistemicas" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="EnfermedadesSistemicas" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="MedicamentosActuales" class="form-label"></label>
+                        <textarea asp-for="MedicamentosActuales" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="MedicamentosActuales" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="CirugiasPrevias" class="form-label"></label>
+                        <textarea asp-for="CirugiasPrevias" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="CirugiasPrevias" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="HabitosRelevantes" class="form-label"></label>
+                        <textarea asp-for="HabitosRelevantes" class="form-control" autocomplete="off" rows="2"></textarea>
+                        <span asp-validation-for="HabitosRelevantes" class="text-danger"></span>
+                    </div>
+                    <div id="embarazo-field" class="col-md-6">
+                        <label asp-for="Embarazo" class="form-label"></label>
+                        <select asp-for="Embarazo" class="form-select" autocomplete="off">
+                            <option value="">No especificado</option>
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </select>
+                        <span asp-validation-for="Embarazo" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Observaciones" class="form-label"></label>
+                        <textarea asp-for="Observaciones" class="form-control" autocomplete="off" rows="3"></textarea>
+                        <span asp-validation-for="Observaciones" class="text-danger"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -78,7 +78,7 @@ namespace MSDentalSys.Web.Models.ViewModels
         [Display(Name = "Hábitos relevantes")]
         public string? HabitosRelevantes { get; set; }
 
-        [Display(Name = "Embarazo")]
+        [Display(Name = "Embarazada")]
         public bool? Embarazo { get; set; }
 
         [StringLength(500)]
