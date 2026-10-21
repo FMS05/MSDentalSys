@@ -4,7 +4,7 @@
 }
 
 <div class="appointment-page">
-    <div class="page-heading">
+    <div class="page-heading mb-3">
         <div>
             <p class="dashboard-eyebrow">Agenda clínica</p>
             <h1>Reagendar cita</h1>
@@ -13,14 +13,14 @@
         <a asp-action="Details" asp-route-id="@Model.CitaId" class="btn btn-light">Volver al detalle</a>
     </div>
 
-    <div class="appointment-form-card appointment-reschedule-card">
+    <div class="appointment-form-card appointment-reschedule-card p-3 p-md-4">
         <form asp-action="Reschedule" asp-route-id="@Model.CitaId" method="post" autocomplete="off">
             <input asp-for="CitaId" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
             <label asp-for="FechaHoraInicio" class="form-label"></label>
             <input asp-for="FechaHoraInicio" class="form-control" autocomplete="off" type="datetime-local" />
             <span asp-validation-for="FechaHoraInicio" class="text-danger"></span>
-            <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+            <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
                 <a asp-action="Details" asp-route-id="@Model.CitaId" class="btn btn-outline-secondary">Cancelar</a>
                 <button type="submit" class="btn btn-ms-primary">Guardar nueva fecha</button>
             </div>
