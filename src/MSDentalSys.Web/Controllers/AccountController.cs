@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Models;
 using MSDentalSys.Web.Models.ViewModels;
+using MSDentalSys.Web.Security;
 
 namespace MSDentalSys.Web.Controllers
 {
@@ -85,6 +88,68 @@ namespace MSDentalSys.Web.Controllers
                     : "El correo o la contraseña no son correctos.");
 
             return View(model);
+        }
+
+        [HttpGet]
+        [Authorize]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> ChangePassword()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null || !user.Estado)
+            {
+                await _signInManager.SignOutAsync();
+                return RedirectToAction(nameof(Login));
+            }
+
+            return View(new ChangePasswordViewModel());
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting(ChangePasswordRateLimit.PolicyName)]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null || !user.Estado)
+            {
+                await _signInManager.SignOutAsync();
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (ModelState.IsValid && string.Equals(model.CurrentPassword, model.NewPassword, StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(model.NewPassword), "La nueva contraseña debe ser diferente de la actual.");
+
+            if (ModelState.IsValid)
+            {
+                var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    // Identity ya renovó el SecurityStamp. Conservar las propiedades de la sesión actual.
+                    await _signInManager.RefreshSignInAsync(user);
+                    TempData["SuccessMessage"] = "Tu contraseña se cambió correctamente.";
+                    return RedirectToAction(nameof(ChangePassword));
+                }
+
+                if (result.Errors.Any(error => error.Code == "ConcurrencyFailure"))
+                {
+                    // Volver a leer sin la entidad rastreada que Identity intentó actualizar.
+                    var currentUser = await _userManager.Users.AsNoTracking()
+                        .SingleOrDefaultAsync(candidate => candidate.Id == user.Id);
+                    if (currentUser is null || !currentUser.Estado)
+                    {
+                        await _signInManager.SignOutAsync();
+                        return RedirectToAction(nameof(Login));
+                    }
+                }
+
+                IdentityPasswordErrors.AddErrors(ModelState, result, _userManager.Options.Password);
+            }
+
+            IdentityPasswordErrors.ClearAttemptedValues(ModelState);
+            return View(new ChangePasswordViewModel());
         }
 
         [HttpPost]

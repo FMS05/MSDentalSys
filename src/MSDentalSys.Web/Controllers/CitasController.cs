@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Data;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +42,8 @@ namespace MSDentalSys.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(DateTime? fecha, string? estado, int? pacienteId)
+        public async Task<IActionResult> Index(DateTime? fecha, string? estado, int? pacienteId,
+            string? odontologoId = null, string? vista = null)
         {
             var query = _context.Citas
                 .Include(c => c.Paciente)
@@ -53,6 +55,10 @@ namespace MSDentalSys.Web.Controllers
             if (User.IsInRole("Odontologo"))
             {
                 query = query.Where(c => c.OdontologoId == User.FindFirstValue(ClaimTypes.NameIdentifier));
+            }
+            else if (!string.IsNullOrWhiteSpace(odontologoId))
+            {
+                query = query.Where(c => c.OdontologoId == odontologoId);
             }
 
             if (fecha.HasValue)
@@ -85,8 +91,119 @@ namespace MSDentalSys.Web.Controllers
                     .Select(p => p.Nombre + " " + p.Apellido)
                     .SingleOrDefaultAsync()
                 : null;
+            ViewData["Vista"] = vista == "lista" ? "lista" : "calendario";
+            ViewData["OdontologoId"] = User.IsInRole("Odontologo") ? null : odontologoId;
+            ViewData["Odontologos"] = User.IsInRole("Odontologo")
+                ? new List<SelectListItem>()
+                : await LoadCalendarOdontologistsAsync();
 
             return View(citas);
+        }
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Calendario(string? start, string? end, string? estado = null,
+            int? pacienteId = null, string? odontologoId = null)
+        {
+            if (!ModelState.IsValid || !TryParseCalendarDate(start, out var rangeStart) ||
+                !TryParseCalendarDate(end, out var rangeEnd) || rangeStart >= rangeEnd ||
+                rangeEnd - rangeStart > TimeSpan.FromDays(62))
+            {
+                return BadRequest(new { error = "Indica un intervalo ISO válido con start anterior a end y de hasta 62 días." });
+            }
+
+            var query = _context.Citas.AsNoTracking().AsQueryable();
+            // Conserva la precedencia de Odontologo incluso para usuarios con varios roles.
+            if (User.IsInRole("Odontologo"))
+                query = query.Where(c => c.OdontologoId == User.FindFirstValue(ClaimTypes.NameIdentifier));
+            else if (!string.IsNullOrWhiteSpace(odontologoId))
+                query = query.Where(c => c.OdontologoId == odontologoId);
+
+            if (!string.IsNullOrWhiteSpace(estado) && EstadosPermitidos.Contains(estado))
+                query = query.Where(c => c.EstadoCita == estado);
+            if (pacienteId.HasValue)
+                query = query.Where(c => c.PacienteId == pacienteId.Value);
+
+            // El CHECK existente limita la duración a 1440 minutos. Proyectar un rango
+            // acotado permite resolver la intersección igual en SQL Server y SQLite.
+            var lower = new DateTime(Math.Max(DateTime.MinValue.Ticks, rangeStart.Ticks - TimeSpan.TicksPerDay));
+            var candidates = await query
+                .Where(c => c.FechaHoraInicio >= lower && c.FechaHoraInicio < rangeEnd)
+                .OrderBy(c => c.FechaHoraInicio).ThenBy(c => c.CitaId)
+                .Select(c => new
+                {
+                    c.CitaId, c.FechaHoraInicio, c.DuracionProgramadaMinutos, c.EstadoCita, c.OdontologoId,
+                    Titulo = c.Paciente.Nombre + " " + c.Paciente.Apellido + " · " + c.ServicioOdontologico.Nombre,
+                    OdontologoNombre = c.Odontologo.Nombre + " " + c.Odontologo.Apellido
+                })
+                .ToListAsync(HttpContext.RequestAborted);
+
+            var events = new List<CitaCalendarioEventoViewModel>();
+            foreach (var cita in candidates)
+            {
+                long? endTicks = cita.DuracionProgramadaMinutos.HasValue
+                    ? cita.FechaHoraInicio.Ticks + cita.DuracionProgramadaMinutos.Value * TimeSpan.TicksPerMinute
+                    : null;
+                if (endTicks.HasValue ? endTicks.Value <= rangeStart.Ticks : cita.FechaHoraInicio < rangeStart)
+                    continue;
+
+                // No convertir un final fuera de DateTime en una duración inventada.
+                // Las escrituras actuales lo previenen; esta guarda tolera datos históricos extremos.
+                var knownEnd = endTicks.HasValue && endTicks.Value <= DateTime.MaxValue.Ticks;
+                events.Add(new CitaCalendarioEventoViewModel
+                {
+                    Id = cita.CitaId,
+                    Title = cita.Titulo,
+                    Start = CalendarDate(cita.FechaHoraInicio),
+                    End = knownEnd ? CalendarDate(new DateTime(endTicks!.Value)) : null,
+                    DuracionConocida = knownEnd,
+                    Estado = cita.EstadoCita,
+                    OdontologoId = cita.OdontologoId,
+                    OdontologoNombre = cita.OdontologoNombre,
+                    Url = Url.Action(nameof(Details), "Citas", new { id = cita.CitaId })!
+                });
+            }
+            return Json(events);
+        }
+
+        private async Task<List<SelectListItem>> LoadCalendarOdontologistsAsync()
+        {
+            // Incluye profesionales con citas históricas aunque estén inactivos o hayan
+            // dejado de tener el rol. No se reutiliza el catálogo de creación de citas.
+            var activeIds = _context.UserRoles
+                .Where(ur => _context.Roles.Any(r => r.Id == ur.RoleId && r.Name == "Odontologo"))
+                .Select(ur => ur.UserId);
+            return await _context.Users.AsNoTracking()
+                .Where(u => (u.Estado && activeIds.Contains(u.Id)) || _context.Citas.Any(c => c.OdontologoId == u.Id))
+                .OrderBy(u => u.Apellido).ThenBy(u => u.Nombre)
+                .Select(u => new SelectListItem
+                {
+                    Value = u.Id,
+                    Text = u.Nombre + " " + u.Apellido + (u.Estado ? "" : " (inactivo)")
+                }).ToListAsync();
+        }
+
+        private static string CalendarDate(DateTime date) =>
+            date.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture);
+
+        private static bool TryParseCalendarDate(string? value, out DateTime date)
+        {
+            // El dominio almacena hora civil, no instantes UTC. Incluso si un cliente
+            // envía un offset, conservamos sus componentes de fecha/hora sin convertirlos.
+            string[] formats = ["yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF"];
+            var plain = value is not null && value.EndsWith('Z') && value.Contains('T') ? value[..^1] : value;
+            if (DateTime.TryParseExact(plain, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+            {
+                date = DateTime.SpecifyKind(date, DateTimeKind.Unspecified);
+                return true;
+            }
+            string[] offsetFormats = ["yyyy-MM-dd'T'HH:mmzzz", "yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz"];
+            if (DateTimeOffset.TryParseExact(value, offsetFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var offset))
+            {
+                date = offset.DateTime;
+                return true;
+            }
+            return false;
         }
 
         [HttpGet]

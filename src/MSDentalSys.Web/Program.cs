@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
 using MSDentalSys.Data.InitialData;
 using MSDentalSys.Data.Models;
+using MSDentalSys.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +43,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<UserProfilePhotoStore>();
+builder.Services.AddRateLimiter(options =>
+    options.AddPolicy<string, ChangePasswordRateLimit>(ChangePasswordRateLimit.PolicyName));
 
 var app = builder.Build();
 
@@ -70,6 +74,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapStaticAssets();
 

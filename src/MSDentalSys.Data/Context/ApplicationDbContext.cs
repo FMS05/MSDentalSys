@@ -26,6 +26,11 @@ namespace MSDentalSys.Data.Context
         {
             base.OnModelCreating(builder);
 
+            builder.Entity<ApplicationUser>()
+                .HasIndex(user => user.Cedula)
+                .IsUnique()
+                .HasFilter("[Cedula] IS NOT NULL");
+
             builder.Entity<SubservicioOdontologico>(entity =>
             {
                 entity.HasOne(s => s.ServicioOdontologico).WithMany(s => s.Subservicios)

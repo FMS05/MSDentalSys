@@ -21,11 +21,14 @@
 
     <div class="page-heading">
         <div>
-            <p class="dashboard-eyebrow">Administración</p>
+            <p class="dashboard-eyebrow">Equipo de la clínica</p>
             <h1>Usuarios internos</h1>
-            <p>Gestiona el acceso del equipo de la clínica.</p>
+            <p>@(User.IsInRole("Administrador") ? "Gestiona el acceso del equipo de la clínica." : "Consulta los perfiles del equipo de la clínica.")</p>
         </div>
-        <a asp-action="Create" class="btn btn-ms-primary"><span aria-hidden="true">+</span> Nuevo usuario</a>
+        @if (User.IsInRole("Administrador"))
+        {
+            <a asp-action="Create" class="btn btn-ms-primary"><span aria-hidden="true">+</span> Nuevo usuario</a>
+        }
     </div>
 
     <div class="user-toolbar">
@@ -72,8 +75,11 @@
                             <td><span class="user-status @(usuario.Estado ? "user-status-active" : "user-status-inactive")">@(usuario.Estado ? "Activo" : "Inactivo")</span></td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Details" asp-route-id="@usuario.Id" class="btn btn-sm btn-user-action">Ver</a>
-                                <a asp-action="Edit" asp-route-id="@usuario.Id" class="btn btn-sm btn-user-action">Editar</a>
-                                @if (!usuario.EsAdministradorInicial)
+                                @if (usuario.PuedeEditar)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@usuario.Id" class="btn btn-sm btn-user-action">Editar</a>
+                                }
+                                @if (usuario.PuedeCambiarEstado)
                                 {
                                     @if (usuario.Estado)
                                     {
@@ -88,7 +94,7 @@
                                         </form>
                                     }
                                 }
-                                else
+                                else if (usuario.EsAdministradorInicial)
                                 {
                                     <span class="protected-user-label">Protegido</span>
                                 }

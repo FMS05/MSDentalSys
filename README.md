@@ -216,7 +216,7 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado final validado: **542 pruebas aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** en la ejecución estándar cuando no está configurada `MSDENTALSYS_H8_SQLSERVER`. Los resultados de etapas anteriores se conservan en [pruebas](docs/pruebas.md).
+Estado validado el 25/10/2026: **800 pruebas .NET aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** sin `MSDENTALSYS_H8_SQLSERVER`; también **38 pruebas JavaScript aprobadas**. Véase el [informe de Usuarios y perfiles](docs/usuarios-perfiles-validacion.md). Los resultados de etapas anteriores se conservan en [pruebas](docs/pruebas.md).
 
 La suite estándar utiliza SQLite InMemory y no utiliza `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en `Testing`: claims controlados para autorización y cookies reales de Identity para revocación de sesiones, siempre con datos de pruebas aislados. H8 dispone además de una prueba SQL Server opcional con configuración explícita.
 

@@ -1,0 +1,176 @@
+/* Calendar presentation is isolated to Citas/Index. */
+.citas-calendar-page .appointment-calendar-card {
+    padding: 1.25rem;
+    border: 1px solid #eeeae3;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(40, 38, 32, .05);
+}
+
+.citas-calendar-page .calendar-view-switch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.citas-calendar-page .calendar-guidance {
+    margin-bottom: .5rem;
+    color: #4d4a45;
+}
+
+.citas-calendar-page .calendar-duration-note,
+.citas-calendar-page .calendar-query-status {
+    color: #625e57;
+    font-size: .85rem;
+}
+
+.citas-calendar-page .calendar-query-status {
+    min-height: 1.3em;
+}
+
+.citas-calendar-page .fc {
+    --fc-border-color: #e5e0d8;
+    --fc-button-bg-color: #514c43;
+    --fc-button-border-color: #514c43;
+    --fc-button-hover-bg-color: #39352e;
+    --fc-button-hover-border-color: #39352e;
+    --fc-button-active-bg-color: #39352e;
+    --fc-button-active-border-color: #39352e;
+    --fc-today-bg-color: #fbf5e9;
+    --fc-neutral-bg-color: #f8f6f2;
+}
+
+.citas-calendar-page .fc .fc-toolbar-title {
+    color: #39352e;
+    font-size: 1.3rem;
+}
+
+.citas-calendar-page .fc .fc-col-header-cell-cushion,
+.citas-calendar-page .fc .fc-daygrid-day-number {
+    color: #514c43;
+    text-decoration: none;
+}
+
+.citas-calendar-page .fc .fc-event {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.citas-calendar-page .fc .fc-event:focus-visible,
+.citas-calendar-page .fc .fc-button:focus-visible {
+    outline: 3px solid #805c22;
+    outline-offset: 2px;
+}
+
+.citas-calendar-page .fc .calendar-state-pending {
+    background: #fbf3df;
+    border-color: #b18b40;
+    color: #654d21;
+}
+
+.citas-calendar-page .fc .calendar-state-confirmed {
+    background: #e8f2fc;
+    border-color: #6387ac;
+    color: #244f78;
+}
+
+.citas-calendar-page .fc .calendar-state-attended {
+    background: #eaf6ed;
+    border-color: #629a71;
+    color: #2d623e;
+}
+
+.citas-calendar-page .fc .calendar-state-cancelled {
+    background: #f0edeb;
+    border-color: #8f817a;
+    color: #65534b;
+}
+
+.citas-calendar-page .fc .calendar-state-absent {
+    background: #fbedeb;
+    border-color: #ad7770;
+    color: #7b3f39;
+}
+
+.citas-calendar-page .fc .fc-event-main {
+    color: inherit;
+}
+
+.citas-calendar-page .fc .calendar-duration-unknown {
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.citas-calendar-page .calendar-event-content {
+    padding: 1px 3px;
+    overflow: hidden;
+    font-size: .75rem;
+    line-height: 1.25;
+}
+
+.citas-calendar-page .calendar-event-content > span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.citas-calendar-page .calendar-event-title,
+.citas-calendar-page .calendar-event-duration {
+    font-weight: 600;
+}
+
+.citas-calendar-page .calendar-event-state,
+.citas-calendar-page .calendar-event-duration {
+    font-size: .7rem;
+}
+
+.citas-calendar-page .fc-daygrid-event .calendar-event-content {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.citas-calendar-page .fc-timegrid-event .calendar-event-content {
+    white-space: nowrap;
+}
+
+.citas-calendar-page .calendar-query-failed .fc-view-harness {
+    opacity: .5;
+    filter: grayscale(1);
+}
+
+@media (max-width: 767.98px) {
+    .citas-calendar-page .appointment-calendar-card {
+        padding: .65rem;
+    }
+
+    .citas-calendar-page .fc .fc-header-toolbar {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .75rem;
+    }
+
+    .citas-calendar-page .fc .fc-toolbar-chunk:nth-child(2) {
+        flex-basis: 100%;
+        order: -1;
+        text-align: center;
+    }
+
+    .citas-calendar-page .fc .fc-toolbar-title {
+        font-size: 1.15rem;
+    }
+
+    .citas-calendar-page .fc .fc-button {
+        font-size: .85rem;
+    }
+
+    .citas-calendar-page .fc .fc-col-header-cell-cushion {
+        padding-right: 1px;
+        padding-left: 1px;
+        font-size: .72rem;
+    }
+
+    .citas-calendar-page .fc .fc-timegrid-axis,
+    .citas-calendar-page .fc .fc-timegrid-slot-label {
+        font-size: .7rem;
+    }
+}

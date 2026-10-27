@@ -9,5 +9,7 @@ namespace MSDentalSys.Web.Models.ViewModels
         public string Rol { get; set; } = string.Empty;
         public bool Estado { get; set; }
         public bool EsAdministradorInicial { get; set; }
+        public bool PuedeEditar { get; set; }
+        public bool PuedeCambiarEstado { get; set; }
     }
 }

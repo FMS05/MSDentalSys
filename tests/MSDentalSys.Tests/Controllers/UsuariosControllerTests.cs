@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -580,7 +581,8 @@ public class UsuariosControllerTests
         };
         var controller = database.CreateController();
         var model = EditModel(user);
-        model.Email = "manipulado@example.test";
+        // El correo ya es editable: este caso aísla el rollback de datos y roles.
+        model.Email = user.Email!;
         model.EsAdministradorInicial = true;
 
         if (throws)
@@ -610,6 +612,114 @@ public class UsuariosControllerTests
         Assert.Equal(concurrencyStamp, original.ConcurrencyStamp);
         Assert.Equal("Odontologo", await (from ur in fresh.UserRoles
             join role in fresh.Roles on ur.RoleId equals role.Id select role.Name).SingleAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Edit_SetUserNameFallaDespuesDeSetEmail_RevierteIdentidadYDatos(bool throws)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        const string originalEmail = "antes@example.test";
+        const string replacementEmail = "despues@example.test";
+        var user = await database.CreateUserAsync(originalEmail, "Odontologo", "Antes", "Original");
+        user.Cedula = "001-1234567-8";
+        user.PhoneNumber = "8095550100";
+        user.PhoneNumberConfirmed = true;
+        user.EmailConfirmed = true;
+        Assert.True((await database.UserManager.UpdateAsync(user)).Succeeded);
+        var stamp = user.SecurityStamp;
+        var concurrencyStamp = user.ConcurrencyStamp;
+        var reached = false;
+        database.ControlledManager.FailingOperation = "UserName";
+        database.ControlledManager.ThrowFailure = throws;
+        database.ControlledManager.BeforeOperation = async operation =>
+        {
+            if (operation != "UserName") return;
+            reached = true;
+            Assert.NotNull(database.Context.Database.CurrentTransaction);
+            var intermediate = await database.Context.Users.AsNoTracking().SingleAsync();
+            // SetEmailAsync ya escribió dentro de la transacción; falla la segunda API.
+            Assert.Equal(replacementEmail, intermediate.Email);
+            Assert.Equal(replacementEmail.ToUpperInvariant(), intermediate.NormalizedEmail);
+            Assert.Equal(originalEmail, intermediate.UserName);
+            Assert.False(intermediate.EmailConfirmed);
+            Assert.Equal("Nuevo", intermediate.Nombre);
+            Assert.Equal("002-7654321-0", intermediate.Cedula);
+        };
+        var controller = database.CreateController();
+        var model = EditModel(user);
+        model.Email = replacementEmail;
+        model.Cedula = "00276543210";
+
+        if (throws)
+            Assert.Same(database.ControlledManager.FailureException,
+                await Assert.ThrowsAsync<InvalidOperationException>(() => controller.Edit(user.Id, model)));
+        else
+        {
+            Assert.Same(model, Assert.IsType<ViewResult>(await controller.Edit(user.Id, model)).Model);
+            Assert.Single(controller.ModelState[nameof(model.Email)]!.Errors);
+            Assert.Equal(replacementEmail, model.Email);
+        }
+
+        Assert.True(reached);
+        Assert.Empty(database.Context.ChangeTracker.Entries());
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        await using var fresh = database.CreateFreshContext();
+        var stored = await fresh.Users.SingleAsync();
+        Assert.Equal(originalEmail, stored.Email);
+        Assert.Equal(originalEmail, stored.UserName);
+        Assert.Equal(originalEmail.ToUpperInvariant(), stored.NormalizedEmail);
+        Assert.Equal(originalEmail.ToUpperInvariant(), stored.NormalizedUserName);
+        Assert.Equal("Antes", stored.Nombre);
+        Assert.Equal("Original", stored.Apellido);
+        Assert.Equal("001-1234567-8", stored.Cedula);
+        Assert.Equal("8095550100", stored.PhoneNumber);
+        Assert.True(stored.PhoneNumberConfirmed);
+        Assert.True(stored.EmailConfirmed);
+        Assert.Equal(stamp, stored.SecurityStamp);
+        Assert.Equal(concurrencyStamp, stored.ConcurrencyStamp);
+        Assert.Equal("Odontologo", await (from membership in fresh.UserRoles
+            join role in fresh.Roles on membership.RoleId equals role.Id select role.Name).SingleAsync());
+    }
+
+    [Fact]
+    public async Task Edit_CedulaOcupadaTrasValidacion_IndiceRechazaYRevierteCambios()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var user = await database.CreateUserAsync("objetivo@example.test", "Odontologo", "Antes", "Original");
+        var other = await database.CreateUserAsync("otro@example.test", "Recepcionista", "Otro", "Usuario", false);
+        var stamp = user.SecurityStamp;
+        var reached = false;
+        database.ControlledManager.BeforeOperation = async operation =>
+        {
+            if (operation != "Update") return;
+            reached = true;
+            // Intercalar la ocupación después del precheck prueba el manejo del índice.
+            // No simula aislamiento ni bloqueo de dos conexiones de SQL Server.
+            await database.Context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE AspNetUsers SET Cedula = {"003-1234567-8"} WHERE Id = {other.Id}");
+        };
+        var controller = database.CreateController();
+        var model = EditModel(user);
+        model.Cedula = "00312345678";
+
+        Assert.Same(model, Assert.IsType<ViewResult>(await controller.Edit(user.Id, model)).Model);
+
+        Assert.True(reached);
+        Assert.Single(controller.ModelState[nameof(model.Cedula)]!.Errors);
+        Assert.Empty(database.Context.ChangeTracker.Entries());
+        Assert.False(controller.TempData.ContainsKey("SuccessMessage"));
+        await using var fresh = database.CreateFreshContext();
+        var stored = await fresh.Users.SingleAsync(candidate => candidate.Id == user.Id);
+        Assert.Null(stored.Cedula);
+        Assert.Equal("Antes", stored.Nombre);
+        Assert.Equal("Original", stored.Apellido);
+        Assert.Null(stored.PhoneNumber);
+        Assert.Equal(stamp, stored.SecurityStamp);
+        Assert.Equal("Odontologo", await (from membership in fresh.UserRoles
+            join role in fresh.Roles on membership.RoleId equals role.Id
+            where membership.UserId == user.Id select role.Name).SingleAsync());
     }
 
     [Theory]
@@ -688,6 +798,7 @@ public class UsuariosControllerTests
         {
             Nombre = firstName,
             Apellido = lastName,
+            Cedula = "001-1234567-8",
             Email = email,
             Telefono = "809-555-0110",
             Rol = role,
@@ -780,7 +891,14 @@ public class UsuariosControllerTests
 
         public UsuariosController CreateController()
         {
-            var httpContext = new DefaultHttpContext();
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, "administrador-actor"),
+                    new Claim(ClaimTypes.Role, "Administrador")
+                ], "UnitTest"))
+            };
             var controller = new UsuariosController(UserManager, Context)
             {
                 ControllerContext = new ControllerContext
@@ -846,6 +964,10 @@ public class UsuariosControllerTests
 
         public override Task<IdentityResult> UpdateAsync(ApplicationUser user) =>
             ExecuteAsync("Update", () => base.UpdateAsync(user));
+        public override Task<IdentityResult> SetEmailAsync(ApplicationUser user, string? email) =>
+            ExecuteAsync("Email", () => base.SetEmailAsync(user, email));
+        public override Task<IdentityResult> SetUserNameAsync(ApplicationUser user, string? userName) =>
+            ExecuteAsync("UserName", () => base.SetUserNameAsync(user, userName));
         public override Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role) =>
             ExecuteAsync("Add", () => base.AddToRoleAsync(user, role));
         public override Task<IdentityResult> RemoveFromRolesAsync(ApplicationUser user, IEnumerable<string> roles) =>
