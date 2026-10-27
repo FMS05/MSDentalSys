@@ -21,19 +21,37 @@
 
     <div class="page-heading">
         <div>
-            <p class="dashboard-eyebrow">Administración</p>
+            <p class="dashboard-eyebrow">@(Model.EsPerfilPropio ? "Mi perfil" : "Usuarios")</p>
             <h1>@Model.NombreCompleto</h1>
             <p>Detalle de la cuenta interna.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a asp-action="Index" class="btn btn-light">Volver</a>
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-ms-primary">Editar usuario</a>
+            @if (Model.PuedeEditar)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-ms-primary">@(Model.EsPerfilPropio ? "Editar mi perfil" : "Editar usuario")</a>
+            }
+            @if (Model.EsPerfilPropio)
+            {
+                <a asp-controller="Account" asp-action="ChangePassword" class="btn btn-outline-secondary">Cambiar mi contraseña</a>
+            }
+            @if (Model.PuedeRestablecerPassword)
+            {
+                <a asp-action="ResetPassword" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Restablecer contraseña</a>
+            }
         </div>
     </div>
 
     <div class="user-detail-card">
         <div class="user-detail-header">
-            <div class="user-detail-avatar">@(string.IsNullOrWhiteSpace(Model.NombreCompleto) ? "U" : Model.NombreCompleto.Substring(0, 1).ToUpper())</div>
+            @if (!string.IsNullOrWhiteSpace(Model.FotoPerfil))
+            {
+                <img src="@Url.Action("Photo", "Usuarios", new { id = Model.Id })" alt="Foto de perfil de @Model.NombreCompleto" class="user-detail-avatar" width="72" height="72" style="object-fit: cover;" />
+            }
+            else
+            {
+                <div class="user-detail-avatar">@(string.IsNullOrWhiteSpace(Model.NombreCompleto) ? "U" : Model.NombreCompleto.Substring(0, 1).ToUpper())</div>
+            }
             <div>
                 <h2>@Model.NombreCompleto</h2>
                 @if (Model.EsAdministradorInicial)
@@ -44,10 +62,37 @@
             <span class="user-status @(Model.Estado ? "user-status-active" : "user-status-inactive")">@(Model.Estado ? "Activo" : "Inactivo")</span>
         </div>
         <dl class="user-detail-grid">
-            <div><dt>Correo electrónico</dt><dd>@Model.Email</dd></div>
+            <div>
+                <dt>Correo electrónico</dt>
+                <dd>
+                    @Model.Email
+                    @if (Model.EsAdministradorInicial)
+                    {
+                        <div class="form-text">El correo del Administrador inicial está bloqueado y no se puede modificar.</div>
+                    }
+                </dd>
+            </div>
+            <div><dt>Cédula</dt><dd>@(Model.Cedula ?? "No especificada")</dd></div>
             <div><dt>Teléfono</dt><dd>@(Model.Telefono ?? "No especificado")</dd></div>
             <div><dt>Rol</dt><dd><span class="role-badge role-@Model.Rol.ToLowerInvariant()">@Model.Rol</span></dd></div>
             <div><dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd></div>
         </dl>
+        @if (Model.PuedeCambiarEstado)
+        {
+            <div class="d-flex justify-content-end mt-3">
+                @if (Model.Estado)
+                {
+                    <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('¿Deseas desactivar este usuario?');">
+                        <button type="submit" class="btn btn-outline-danger">Desactivar usuario</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="Activate" asp-route-id="@Model.Id" method="post">
+                        <button type="submit" class="btn btn-outline-success">Activar usuario</button>
+                    </form>
+                }
+            </div>
+        }
     </div>
 </div>

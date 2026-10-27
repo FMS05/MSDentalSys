@@ -6,32 +6,69 @@
 <div class="user-admin-page">
     <div class="page-heading">
         <div>
-            <p class="dashboard-eyebrow">Administración</p>
+            <p class="dashboard-eyebrow">Usuarios</p>
             <h1>Editar usuario</h1>
-            <p>Actualiza los datos básicos y el rol operativo.</p>
+            <p>@(Model.PuedeEditarDatosAdministrativos ? "Actualiza los datos de la cuenta." : "Actualiza tu correo, teléfono y foto de perfil. Los demás datos los administra la clínica.")</p>
         </div>
         <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-light">Ver detalles</a>
     </div>
 
     <div class="user-form-card user-edit-card">
-        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" autocomplete="off">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" autocomplete="off">
             <input asp-for="Id" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="Nombre" class="form-label"></label>
-                    <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                    @if (Model.PuedeEditarDatosAdministrativos)
+                    {
+                        <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                    }
+                    else
+                    {
+                        <input id="Nombre" value="@Model.Nombre" class="form-control" readonly />
+                    }
                     <span asp-validation-for="Nombre" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Apellido" class="form-label"></label>
-                    <input asp-for="Apellido" class="form-control" autocomplete="off" />
+                    @if (Model.PuedeEditarDatosAdministrativos)
+                    {
+                        <input asp-for="Apellido" class="form-control" autocomplete="off" />
+                    }
+                    else
+                    {
+                        <input id="Apellido" value="@Model.Apellido" class="form-control" readonly />
+                    }
                     <span asp-validation-for="Apellido" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Correo electrónico</label>
-                    <input value="@Model.Email" class="form-control" autocomplete="off" readonly />
-                    <div class="form-text">El correo no se modifica desde esta pantalla.</div>
+                    <label asp-for="Cedula" class="form-label"></label>
+                    @if (Model.PuedeEditarDatosAdministrativos)
+                    {
+                        <input asp-for="Cedula" class="form-control" autocomplete="off" placeholder="XXX-XXXXXXX-X" aria-describedby="cedula-help" />
+                        <div id="cedula-help" class="form-text">Ingresa los 11 dígitos con o sin guiones. Las cuentas existentes pueden conservar este campo vacío.</div>
+                    }
+                    else
+                    {
+                        <input id="Cedula" value="@Model.Cedula" class="form-control" readonly aria-describedby="cedula-help" />
+                        <div id="cedula-help" class="form-text">Solo un Administrador puede modificar la cédula.</div>
+                    }
+                    <span asp-validation-for="Cedula" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label"></label>
+                    @if (Model.EsAdministradorInicial)
+                    {
+                        <input id="Email" name="Email" type="email" value="@Model.Email" class="form-control" readonly aria-describedby="email-help" />
+                        <div id="email-help" class="form-text">El correo del Administrador inicial está bloqueado y no se puede modificar.</div>
+                    }
+                    else
+                    {
+                        <input asp-for="Email" class="form-control" autocomplete="email" />
+                        <div class="form-text">Este correo también se utiliza para iniciar sesión.</div>
+                    }
+                    <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Telefono" class="form-label"></label>
@@ -40,11 +77,11 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Rol" class="form-label"></label>
-                    @if (Model.EsAdministradorInicial)
+                    @if (!Model.PuedeEditarRol)
                     {
-                        <input value="Administrador" class="form-control" autocomplete="off" readonly />
+                        <input id="rol-actual" value="@Model.Rol" class="form-control" readonly aria-label="Rol actual" />
                         <input asp-for="Rol" type="hidden" />
-                        <div class="form-text">El administrador inicial conserva su rol protegido.</div>
+                        <div class="form-text">@(Model.EsAdministradorInicial ? "El Administrador inicial conserva su rol protegido." : "El rol de esta cuenta no se modifica desde este formulario.")</div>
                     }
                     else
                     {
@@ -54,6 +91,20 @@
                         </select>
                     }
                     <span asp-validation-for="Rol" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="FotoArchivo" class="form-label"></label>
+                    <input asp-for="FotoArchivo" type="file" class="form-control" accept="image/jpeg,image/png" aria-describedby="foto-help" />
+                    <div id="foto-help" class="form-text">Imagen JPEG o PNG de hasta 2 MB.</div>
+                    <span asp-validation-for="FotoArchivo" class="text-danger"></span>
+                    @if (!string.IsNullOrWhiteSpace(Model.FotoPerfil))
+                    {
+                        <img src="@Url.Action("Photo", "Usuarios", new { id = Model.Id })" alt="Foto de perfil actual" class="rounded mt-2" width="96" height="96" style="object-fit: cover;" />
+                        <div class="form-check mt-2">
+                            <input asp-for="EliminarFoto" class="form-check-input" />
+                            <label asp-for="EliminarFoto" class="form-check-label"></label>
+                        </div>
+                    }
                 </div>
             </div>
             <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">

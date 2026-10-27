@@ -14,7 +14,7 @@
     </div>
 
     <div class="user-form-card">
-        <form asp-action="Create" method="post" autocomplete="off">
+        <form asp-action="Create" method="post" enctype="multipart/form-data" autocomplete="off">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
             <div class="user-form-section">
                 <div class="user-form-section-title"><span>01</span><h2>Datos del usuario</h2></div>
@@ -28,6 +28,12 @@
                         <label asp-for="Apellido" class="form-label"></label>
                         <input asp-for="Apellido" class="form-control" autocomplete="off" />
                         <span asp-validation-for="Apellido" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Cedula" class="form-label"></label>
+                        <input asp-for="Cedula" class="form-control" autocomplete="off" placeholder="XXX-XXXXXXX-X" aria-describedby="cedula-help" />
+                        <div id="cedula-help" class="form-text">Obligatoria. Ingresa los 11 dígitos con o sin guiones.</div>
+                        <span asp-validation-for="Cedula" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
                         <label asp-for="Email" class="form-label"></label>
@@ -47,6 +53,12 @@
                             <option value="Recepcionista">Recepcionista</option>
                         </select>
                         <span asp-validation-for="Rol" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="FotoArchivo" class="form-label"></label>
+                        <input asp-for="FotoArchivo" type="file" class="form-control" accept="image/jpeg,image/png" aria-describedby="foto-help" />
+                        <div id="foto-help" class="form-text">Opcional. Imagen JPEG o PNG de hasta 2 MB.</div>
+                        <span asp-validation-for="FotoArchivo" class="text-danger"></span>
                     </div>
                 </div>
             </div>

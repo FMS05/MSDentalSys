@@ -50,12 +50,12 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
     }
 
     [Fact]
-    public async Task Usuarios_Recepcionista_EsRechazado()
+    public async Task Usuarios_Recepcionista_PuedeConsultarDirectorio()
     {
         using var client = CreateClient("Recepcionista");
         var response = await client.GetAsync("/Usuarios");
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -142,12 +142,12 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
     }
 
     [Fact]
-    public async Task Usuarios_Odontologo_EsRechazado()
+    public async Task Usuarios_Odontologo_PuedeConsultarDirectorio()
     {
         using var client = CreateClient("Odontologo");
         var response = await client.GetAsync("/Usuarios");
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

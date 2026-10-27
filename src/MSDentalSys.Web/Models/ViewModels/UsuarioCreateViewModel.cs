@@ -14,6 +14,11 @@ namespace MSDentalSys.Web.Models.ViewModels
         [Display(Name = "Apellido")]
         public string Apellido { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "La cédula es obligatoria para registrar un usuario.")]
+        [StringLength(20, ErrorMessage = "La cédula no puede superar los 20 caracteres.")]
+        [Display(Name = "Cédula")]
+        public string? Cedula { get; set; }
+
         [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
         [EmailAddress(ErrorMessage = "Ingresa un correo electrónico válido.")]
         [StringLength(120, ErrorMessage = "El correo no puede superar los 120 caracteres.")]
@@ -23,6 +28,9 @@ namespace MSDentalSys.Web.Models.ViewModels
         [StringLength(20, ErrorMessage = "El teléfono no puede superar los 20 caracteres.")]
         [Display(Name = "Teléfono")]
         public string? Telefono { get; set; }
+
+        [Display(Name = "Foto de perfil")]
+        public IFormFile? FotoArchivo { get; set; }
 
         [Required(ErrorMessage = "Selecciona un rol.")]
         [Display(Name = "Rol")]

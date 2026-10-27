@@ -10,7 +10,7 @@ El entorno `Testing` evita la ejecución de `RoleSeeder`, `AdminSeeder` y `Segur
 
 ## Resultado final vigente
 
-El estado validado del cierre funcional es **542 pruebas aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** en la ejecución estándar sin `MSDENTALSYS_H8_SQLSERVER`. Esta actualización documental no vuelve a ejecutar la suite. Los resultados de fases anteriores que siguen son históricos y no sustituyen este estado; el [cierre final](#cierre-final-de-validación) registra la evolución de 536 a 542.
+El 25/10/2026 se ejecutó la suite completa en Release: **800 pruebas aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** sin `MSDENTALSYS_H8_SQLSERVER`. Las **38 pruebas JavaScript** también pasaron. El [informe de Usuarios y perfiles](usuarios-perfiles-validacion.md) detalla comandos, migración no aplicada, cobertura y validación manual pendiente. Los resultados de fases anteriores que siguen son históricos; el [cierre final anterior](#cierre-final-de-validación) registra la evolución de 536 a 542.
 
 ## Desglose histórico previo (212 casos)
 
