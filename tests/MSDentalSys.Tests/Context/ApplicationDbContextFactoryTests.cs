@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
 using Xunit;
@@ -22,7 +23,7 @@ public class ApplicationDbContextFactoryTests : IDisposable
     {
         const string connection = "Server=argumento.invalid;Database=Controlada;Integrated Security=True";
         using var context = Create("--ConnectionStrings:DefaultConnection", connection);
-        Assert.Equal(connection, context.Database.GetConnectionString());
+        AssertEquivalentConnection(connection, context.Database.GetConnectionString());
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
         Assert.Equal("Microsoft.EntityFrameworkCore.SqlServer", context.Database.ProviderName);
     }
@@ -33,7 +34,7 @@ public class ApplicationDbContextFactoryTests : IDisposable
         File.WriteAllText(Path.Combine(directory, "appsettings.FactoryTests.json"),
             "{\"ConnectionStrings\":{\"DefaultConnection\":\"Server=entorno.invalid;Database=Entorno;Integrated Security=True\"}}");
         using var context = Create();
-        Assert.Equal(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+        AssertEquivalentConnection(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
             ?? "Server=entorno.invalid;Database=Entorno;Integrated Security=True", context.Database.GetConnectionString());
     }
 
@@ -52,6 +53,20 @@ public class ApplicationDbContextFactoryTests : IDisposable
         var error = Assert.Throws<InvalidOperationException>(() =>
             new ApplicationDbContextFactory().CreateDbContext(["--contentRoot", Path.Combine(directory, "ausente")]));
         Assert.Contains("MSDentalSys.Web.csproj", error.Message);
+    }
+
+    private static void AssertEquivalentConnection(string expected, string? actual)
+    {
+        Assert.NotNull(actual);
+        var expectedBuilder = new SqlConnectionStringBuilder(expected);
+        var actualBuilder = new SqlConnectionStringBuilder(actual);
+
+        // EF Core 10 agrega Application Name solo cuando no se configuró explícitamente.
+        if (!expectedBuilder.ShouldSerialize("Application Name"))
+            actualBuilder.Remove("Application Name");
+
+        Assert.True(expectedBuilder.EquivalentTo(actualBuilder),
+            "La fábrica debe conservar todos los parámetros configurados de la conexión.");
     }
 
     private ApplicationDbContext Create(params string[] args) => new ApplicationDbContextFactory()

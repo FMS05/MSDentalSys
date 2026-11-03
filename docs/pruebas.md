@@ -2,13 +2,23 @@
 
 ## Tecnologías y aislamiento
 
-Las pruebas utilizan xUnit sobre .NET 9. La suite estándar utiliza SQLite InMemory cuando requiere persistencia, con un `ApplicationDbContext` aislado por escenario. La conexión se mantiene abierta durante cada prueba y se libera al finalizar. La teoría H8 SQL Server es opcional y requiere configuración explícita, descrita al final.
+Las pruebas utilizan xUnit sobre .NET 10. La suite estándar utiliza SQLite InMemory cuando requiere persistencia, con un `ApplicationDbContext` aislado por escenario. La conexión se mantiene abierta durante cada prueba y se libera al finalizar. La teoría H8 SQL Server es opcional y requiere configuración explícita, descrita al final.
 
 Las pruebas de integración HTTP utilizan `Microsoft.AspNetCore.Mvc.Testing` mediante `WebApplicationFactory`. La factory fuerza el entorno `Testing`, reemplaza SQL Server por SQLite InMemory y crea el esquema con `EnsureCreated`.
 
 El entorno `Testing` evita la ejecución de `RoleSeeder`, `AdminSeeder` y `SeguroSeeder` de producción. Hay dos modalidades de autenticación HTTP: `CustomWebApplicationFactory` emite claims controlados (`NameIdentifier`, `Name` y `Role`) para autorización; `IdentityCookieWebApplicationFactory` conserva las cookies reales de ASP.NET Core Identity y usa un reloj controlado para revocación de sesiones. Ambas utilizan datos de pruebas aislados.
 
 ## Resultado final vigente
+
+Validación consolidada el 03/11/2026, tras migrar a .NET 10 (SDK 10.0.401, EF Core/Identity 10.0.14) y fijar Microsoft.Data.SqlClient 6.1.8. Se recuperó y verificó el resultado completo de `dotnet test` en Debug: **800 aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida**. El archivo local `tests/MSDentalSys.Tests/TestResults/net10-security-final.trx` registra `Completed`, 801 resultados y finalización el 02/11/2026 a las 18:58:38 (-04:00), después de la corrección de seguridad; el ensamblado probado conserva esa compilación y no hay archivos fuente posteriores al resultado. Por existir evidencia completa verificable, no fue necesario repetir la suite .NET.
+
+Las pruebas JavaScript se ejecutaron nuevamente con Node 24.17.0 mediante `node --test tests/client/citas-calendario.test.cjs tests/client/pacientes-form.test.cjs`: **38 aprobadas, 0 fallidas y 0 omitidas**. Se conservaron las versiones de xUnit, su runner y Microsoft.NET.Test.Sdk. Dos aserciones de la fábrica se adaptaron a la normalización de conexiones y al `Application Name` añadido por EF Core 10; siguen comprobando todos los demás parámetros.
+
+`dotnet restore --locked-mode` y `dotnet build` terminaron correctamente el 03/11/2026. Build registró **0 advertencias y 0 errores**. `dotnet list MSDentalSys.sln package --vulnerable --include-transitive --no-restore` confirmó **cero paquetes vulnerables directos o transitivos** en Data, Web y Tests. Microsoft.Data.SqlClient 6.1.8 es la corrección mínima aplicada respecto de 6.1.7; los tres locks resuelven System.Security.Cryptography.Pkcs 9.0.21 y ya no contienen 9.0.11, eliminando los avisos NU1902/NU1903 anteriores.
+
+Se reutilizó EF CLI 10.0.14, ya instalado dentro de `src/MSDentalSys.Data/obj/migration-tools`, sin actualizar la herramienta global. `migrations has-pending-model-changes` confirmó nuevamente ausencia de diferencias y `migrations list --no-connect` enumeró exactamente las siete migraciones, hasta `20261026002901_AddCedulaToApplicationUser`. Ambos comandos usaron `--no-build`, el contexto `ApplicationDbContext`, Data como proyecto y Web como startup, con `-- --environment MigrationValidation --ConnectionStrings:DefaultConnection "Server=metadata.invalid;Database=NotUsed;Integrated Security=True"`. El listado sin conexión no consulta cuáles están aplicadas. No se crearon ni aplicaron migraciones ni se accedió a MSDentalSysDB. La teoría H8 sigue sin ejecutarse por ausencia de `MSDENTALSYS_H8_SQLSERVER`.
+
+### Resultado histórico anterior
 
 El 25/10/2026 se ejecutó la suite completa en Release: **800 pruebas aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** sin `MSDENTALSYS_H8_SQLSERVER`. Las **38 pruebas JavaScript** también pasaron. El [informe de Usuarios y perfiles](usuarios-perfiles-validacion.md) detalla comandos, migración no aplicada, cobertura y validación manual pendiente. Los resultados de fases anteriores que siguen son históricos; el [cierre final anterior](#cierre-final-de-validación) registra la evolución de 536 a 542.
 
@@ -104,7 +114,7 @@ dotnet build .\MSDentalSys.sln
 dotnet test .\MSDentalSys.sln
 ```
 
-`--locked-mode` permite validar la resolución registrada en los `packages.lock.json` de Data, Web y Tests; no está habilitado globalmente. Las dependencias directas están fijadas, con EF Core/Identity 9.0.20. Estos comandos son instrucciones de validación, no ejecuciones realizadas durante esta actualización Markdown.
+`--locked-mode` permite validar la resolución registrada en los `packages.lock.json` de Data, Web y Tests; no está habilitado globalmente. Las dependencias directas están fijadas, con EF Core/Identity 10.0.14. Las ejecuciones y la evidencia verificadas en esta continuación se describen en «Resultado final vigente».
 
 Estado final validado de la ejecución estándar:
 
