@@ -2,7 +2,7 @@
 
 ## Visión general
 
-MSDentalSys es una aplicación web que integra la gestión administrativa y clínica de una clínica dental. Utiliza .NET 9, ASP.NET Core MVC, Razor Views, Entity Framework Core 9, SQL Server y ASP.NET Core Identity. La interfaz combina HTML, CSS y JavaScript con Bootstrap, jQuery y sus componentes de validación.
+MSDentalSys es una aplicación web que integra la gestión administrativa y clínica de una clínica dental. Utiliza .NET 10, ASP.NET Core MVC, Razor Views, Entity Framework Core 10, SQL Server y ASP.NET Core Identity. La interfaz combina HTML, CSS y JavaScript con Bootstrap, jQuery y sus componentes de validación.
 
 La lógica de aplicación se coordina en los controladores MVC, que acceden a `ApplicationDbContext` o a los servicios de Identity. Las vistas Razor generan HTML en el servidor; algunos endpoints devuelven JSON para interacciones del navegador.
 
@@ -48,9 +48,11 @@ MSDentalSys/
 
 ### Dependencias y restauración
 
-`global.json` fija el SDK 9.0.316 y los tres proyectos usan `net9.0`. Las referencias directas de EF Core, Identity, configuración, SQLite y Mvc.Testing están fijadas a 9.0.20; Tests utiliza xUnit 2.9.3, xunit.runner.visualstudio 3.0.2 y Microsoft.NET.Test.Sdk 17.13.0. Los recursos cliente versionados incluyen Bootstrap 5.3.3, jQuery 3.7.1, jQuery Validation 1.21.0 y Unobtrusive Validation 4.0.0.
+`global.json` fija el SDK 10.0.401 y los tres proyectos usan `net10.0`. Las referencias directas de EF Core, Identity, configuración, SQLite y Mvc.Testing están fijadas a 10.0.14; Tests conserva xUnit 2.9.3, xunit.runner.visualstudio 3.0.2 y Microsoft.NET.Test.Sdk 17.13.0. Los recursos cliente versionados incluyen Bootstrap 5.3.3, jQuery 3.7.1, jQuery Validation 1.21.0 y Unobtrusive Validation 4.0.0.
 
 Data, Web y Tests habilitan `RestorePackagesWithLockFile` y versionan cada `packages.lock.json`, que registra la resolución de dependencias. Se puede comprobar su coherencia mediante `dotnet restore --locked-mode` desde la raíz. El repositorio no habilita globalmente `RestoreLockedMode`: generar/utilizar un lock file no equivale a exigir ese modo. Una actualización intencional debe revisar conjuntamente los `.csproj` y sus lock files. La herramienta global `dotnet-ef` se administra por separado.
+
+Data fija explícitamente Microsoft.Data.SqlClient 6.1.8, corrección mínima respecto de 6.1.7. Los tres proyectos resuelven System.Security.Cryptography.Pkcs 9.0.21; la versión vulnerable 9.0.11 dejó de resolverse. La auditoría NuGet del 03/11/2026 no detectó paquetes vulnerables directos ni transitivos en Data, Web o Tests.
 
 ## Flujo MVC
 

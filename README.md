@@ -11,8 +11,8 @@ El sistema busca centralizar la gestión de pacientes, citas, servicios odontol�
 ## Tecnologías utilizadas
 
 - ASP.NET Core MVC
-- .NET 9
-- Entity Framework Core 9.0.20
+- .NET 10 LTS
+- Entity Framework Core 10.0.14
 - SQL Server
 - ASP.NET Core Identity
 - Razor Views
@@ -156,7 +156,7 @@ Algunos nombres de servidor posibles son `.\SQLEXPRESS`, `localhost` y `(localdb
 
 ## Flujo de migraciones para el equipo
 
-Ejecuta estos comandos PowerShell desde la raíz de la solución. Se requiere un SDK compatible con `global.json` (9.0.316) y `dotnet-ef` 9. Comprueba la herramienta con `dotnet ef --version`; si falta, instala mediante `dotnet tool install --global dotnet-ef --version "9.0.*"`.
+Ejecuta estos comandos PowerShell desde la raíz de la solución. Se requiere un SDK compatible con `global.json` (10.0.401) y `dotnet-ef` 10.0.14. Comprueba la herramienta con `dotnet ef --version`; si falta, instala mediante `dotnet tool install --global dotnet-ef --version 10.0.14`; si ya tienes una versión anterior, utiliza `dotnet tool update --global dotnet-ef --version 10.0.14`.
 
 Web y EF CLI utilizan `ConnectionStrings:DefaultConnection`. La fábrica carga, en prioridad creciente, `appsettings.json`, `appsettings.{Environment}.json`, User Secrets de Web en Development, variables de entorno y argumentos. La variable `ConnectionStrings__DefaultConnection` permite sobrescribir la conexión. No necesitas editar la fábrica para cambiar de instancia.
 
@@ -204,7 +204,7 @@ dotnet ef migrations list --no-connect --project .\src\MSDentalSys.Data --startu
 
 Se requiere una conexión SQL Server correctamente configurada para ejecutar la aplicación normalmente.
 
-Las dependencias directas están fijadas en los `.csproj`; EF Core e Identity utilizan 9.0.20. Data, Web y Tests versionan sus `packages.lock.json`. La restauración puede validarse con `dotnet restore --locked-mode`; ese modo no está habilitado globalmente. Las versiones y su mantenimiento se describen en [arquitectura](docs/arquitectura.md#dependencias-y-restauración).
+Las dependencias directas están fijadas en los `.csproj`; EF Core e Identity utilizan 10.0.14. Data fija Microsoft.Data.SqlClient 6.1.8 para corregir la dependencia vulnerable System.Security.Cryptography.Pkcs 9.0.11, sustituida por 9.0.21. Data, Web y Tests versionan sus `packages.lock.json`. La restauración puede validarse con `dotnet restore --locked-mode`; ese modo no está habilitado globalmente. Las versiones y su mantenimiento se describen en [arquitectura](docs/arquitectura.md#dependencias-y-restauración).
 
 ```powershell
 dotnet restore --locked-mode
@@ -216,7 +216,7 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado validado el 25/10/2026: **800 pruebas .NET aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida** sin `MSDENTALSYS_H8_SQLSERVER`; también **38 pruebas JavaScript aprobadas**. Véase el [informe de Usuarios y perfiles](docs/usuarios-perfiles-validacion.md). Los resultados de etapas anteriores se conservan en [pruebas](docs/pruebas.md).
+Estado consolidado el 03/11/2026 sobre .NET 10: **800 pruebas .NET aprobadas, 0 fallidas y 1 teoría H8 SQL Server omitida**, verificadas en el resultado completo del 02/11/2026 sin `MSDENTALSYS_H8_SQLSERVER`; también **38 pruebas JavaScript aprobadas**, ejecutadas nuevamente. Build: **0 advertencias y 0 errores**. Auditoría NuGet: **cero paquetes vulnerables directos o transitivos** en Data, Web y Tests tras fijar Microsoft.Data.SqlClient 6.1.8. La evidencia se detalla en [pruebas](docs/pruebas.md). El [informe de Usuarios y perfiles](docs/usuarios-perfiles-validacion.md) conserva el resultado histórico anterior.
 
 La suite estándar utiliza SQLite InMemory y no utiliza `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en `Testing`: claims controlados para autorización y cookies reales de Identity para revocación de sesiones, siempre con datos de pruebas aislados. H8 dispone además de una prueba SQL Server opcional con configuración explícita.
 
